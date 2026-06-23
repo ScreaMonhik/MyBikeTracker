@@ -1,0 +1,19 @@
+# --- Системне сміття ---
+.DS_Store
+*/.DS_Store
+
+# --- Папки з візуальними ассетами (щоб не грузити ШІ) ---
+*.xcassets/
+MyBikeTracker/Preview Content/
+
+# Якщо в папці Resources лежать тільки медіа/шрифти, розкоментуй рядок нижче:
+# MyBikeTracker/Resources/
+
+# --- Файли налаштувань Xcode (твої локальні) ---
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# --- Стандартні папки збірки (про всяк випадок) ---
+build/
+DerivedData/
+.build/
