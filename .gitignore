@@ -1,6 +1,8 @@
 # --- Системне сміття ---
 .DS_Store
 */.DS_Store
+MyBikeTracker.xcodeproj/xcuserdata/
+MyBikeTracker.xcodeproj/project.xcworkspace/xcuserdata/
 
 # --- Папки з візуальними ассетами (щоб не грузити ШІ) ---
 *.xcassets/
@@ -12,11 +14,15 @@ MyBikeTracker/Preview Content/
 # --- Файли налаштувань Xcode (твої локальні) ---
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
+# Глобальная блокировка любых пользовательских стейтов (добавлено)
+xcuserdata/
+*.xcuserstate
 
 # --- Стандартні папки збірки (про всяк випадок) ---
 build/
 DerivedData/
 .build/
+.swiftpm/
 
 # Секретні конфіги
 Secrets.xcconfig
