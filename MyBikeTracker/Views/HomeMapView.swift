@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreLocation
 
 struct HomeMapView: View {
     @ObservedObject var viewModel: MapViewModel
@@ -36,13 +37,34 @@ struct HomeMapView: View {
 
     var body: some View {
         NavigationView {
-            UIKitMapView(rides: ridesToDisplay, lineColor: historyColor.uiColor, viewModel: viewModel)
-                .ignoresSafeArea(edges: .top)
-                .onAppear {
-                    viewModel.forceAutoCenter()
+            ZStack(alignment: .topTrailing) {
+                UIKitMapView(rides: ridesToDisplay, lineColor: historyColor.uiColor, viewModel: viewModel)
+                    .ignoresSafeArea()
+                    .onAppear {
+                        viewModel.forceAutoCenter()
+                    }
+
+                if viewModel.navigationRoute != nil {
+                    Button(action: {
+                        viewModel.clearRoute()
+                    }) {
+                        Image(systemName: "xmark") // Keep existing icon
+                            .font(.title2.weight(.semibold))
+                            .foregroundColor(.primary)
+                            .frame(width: 50, height: 50)
+                            .background(ChromeGlass(cornerRadius: 25))
+                            .overlay(
+                                Circle().strokeBorder(.white.opacity(0.3), lineWidth: 0.5)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .fixedSize() // CRITICAL: Prevents greedy expansion
+                    .padding(.trailing, 16)
+                    .padding(.top, 12)
                 }
-                .navigationTitle(LocalizedStringKey("map_tab_title"))
-                .navigationBarTitleDisplayMode(.inline)
+            }
+            .navigationTitle(LocalizedStringKey("map_tab_title"))
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

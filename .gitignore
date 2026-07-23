@@ -17,3 +17,6 @@ MyBikeTracker/Preview Content/
 build/
 DerivedData/
 .build/
+
+# Секретні конфіги
+Secrets.xcconfig

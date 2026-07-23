@@ -11,15 +11,12 @@ import Combine
 import SwiftUI
 import CoreLocation
 
-enum MapCameraPosition {
-    case automatic
-    case region(MKCoordinateRegion)
-}
+
 
 /// ViewModel для управления состоянием карты и трекинга поездок.
 /// Обеспечивает логику автоцентровки, построения маршрута, подсчёта скорости и времени, а также взаимодействие с сервисом локаций.
 @MainActor
-final class MapViewModel: ObservableObject {
+final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
 
     // MARK: - Published свойства для реактивного UI
 
@@ -74,6 +71,28 @@ final class MapViewModel: ObservableObject {
     /// Текущий регион карты (используется для контроля позиции камеры)
     @Published var currentRegion: MKCoordinateRegion?
 
+    // MARK: - Navigation / Routing (Ephemeral)
+
+    /// Ephemeral navigation destination
+    @Published var navigationDestination: CLLocationCoordinate2D?
+
+    /// Ephemeral navigation route
+    @Published var navigationRoute: MKRoute?
+
+    // MARK: - Address Search & Autocomplete
+
+    /// Ephemeral search query for address autocomplete
+    @Published var searchQuery: String = "" {
+        didSet {
+            searchCompleter.queryFragment = searchQuery
+        }
+    }
+
+    /// Search completer results
+    @Published var searchResults: [MKLocalSearchCompletion] = []
+
+    private let searchCompleter = MKLocalSearchCompleter()
+
     // MARK: - Внешние зависимости
 
     /// Сервис локаций для получения данных GPS
@@ -111,7 +130,7 @@ final class MapViewModel: ObservableObject {
     // MARK: - Инициализация
 
     /// Предотвращаем инициализацию без сервисов
-    init() {
+    override init() {
         fatalError("Use init(locationService:ridesViewModel:) instead")
     }
 
@@ -122,12 +141,17 @@ final class MapViewModel: ObservableObject {
         self.healthKitService = healthKitService
         self.liveActivityService = liveActivityService
 
+        super.init()
+
         // Устанавливаем регион по умолчанию (например, Киев)
         let defaultLocation = CLLocationCoordinate2D(latitude: 50.4501, longitude: 30.5234)
         let defaultRegion = MKCoordinateRegion(center: defaultLocation,
                                                span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
         self.currentRegion = defaultRegion
         self.cameraPosition = .region(defaultRegion)
+
+        searchCompleter.delegate = self
+        searchCompleter.resultTypes = [.address, .pointOfInterest]
 
         bindLocationUpdates()
     }
@@ -184,6 +208,9 @@ final class MapViewModel: ObservableObject {
 
         // Периодически определяем название ближайшей улицы
         detectNearbyStreet(from: location)
+
+        // Проверяем необходимость перестроения маршрута
+        checkRerouting(currentLocation: location)
     }
 
     /// Обновляет камеру карты программно
@@ -237,6 +264,89 @@ final class MapViewModel: ObservableObject {
                 self.visitedStreetNames.insert(street)
             }
         }
+    }
+
+    // MARK: - Navigation / Routing Logic
+
+    func calculateRoute(to destination: CLLocationCoordinate2D) async {
+        guard let startLoc = locationService.currentLocation else { return }
+
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: startLoc.coordinate))
+        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
+        request.transportType = .automobile
+
+        do {
+            let directions = MKDirections(request: request)
+            let response = try await directions.calculate()
+            self.navigationDestination = destination
+            self.navigationRoute = response.routes.first
+        } catch {
+            print("Route calculation failed: \(error)")
+        }
+    }
+
+    func clearRoute() {
+        navigationDestination = nil
+        navigationRoute = nil
+    }
+
+    func updateCompleterRegion(_ region: MKCoordinateRegion) {
+        searchCompleter.region = region
+    }
+
+    func selectCompletion(_ completion: MKLocalSearchCompletion) async {
+        let request = MKLocalSearch.Request(completion: completion)
+        let search = MKLocalSearch(request: request)
+        do {
+            let response = try await search.start()
+            if let coordinate = response.mapItems.first?.placemark.coordinate {
+                await calculateRoute(to: coordinate)
+            }
+        } catch {
+            print("Local search failed for completion: \(error)")
+        }
+    }
+
+    // MARK: - MKLocalSearchCompleterDelegate
+
+    nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        let results = completer.results
+        Task { @MainActor [weak self] in
+            self?.searchResults = results
+        }
+    }
+
+    nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        print("MKLocalSearchCompleter error: \(error.localizedDescription)")
+    }
+
+    private func checkRerouting(currentLocation: CLLocation) {
+        guard let route = navigationRoute, let destination = navigationDestination else { return }
+        
+        let distance = distanceToPolyline(coordinate: currentLocation.coordinate, polyline: route.polyline)
+        if distance > 50.0 {
+            Task {
+                await calculateRoute(to: destination)
+            }
+        }
+    }
+
+    private func distanceToPolyline(coordinate: CLLocationCoordinate2D, polyline: MKPolyline) -> CLLocationDistance {
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        var minDistance: CLLocationDistance = .greatestFiniteMagnitude
+        
+        let pointCount = polyline.pointCount
+        let points = polyline.points()
+        for i in 0..<pointCount {
+            let ptCoordinate = points[i].coordinate
+            let ptLocation = CLLocation(latitude: ptCoordinate.latitude, longitude: ptCoordinate.longitude)
+            let distance = location.distance(from: ptLocation)
+            if distance < minDistance {
+                minDistance = distance
+            }
+        }
+        return minDistance
     }
 
     // MARK: - Управление трекингом

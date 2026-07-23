@@ -273,6 +273,8 @@
 /* Begin XCBuildConfiguration section */
 		26C6483B2DDB010F005E2D00 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 26C648312DDB010E005E2D00 /* MyBikeTracker */;
+			baseConfigurationReferenceRelativePath = Secrets.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;

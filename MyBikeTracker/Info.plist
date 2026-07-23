@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>MAPBOX_ACCESS_TOKEN</key>
-	<string>YOUR_MAPBOX_TOKEN_HERE</string>
+	<string>$(MAPBOX_ACCESS_TOKEN)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
