@@ -10,9 +10,13 @@ import Foundation
 extension TimeInterval {
     /// Форматирует TimeInterval как "HH:MM:SS"
     var formattedAsTimer: String {
+        Self.timerFormatter.string(from: self) ?? "00:00:00"
+    }
+
+    private static let timerFormatter: DateComponentsFormatter = {
         let formatter = DateComponentsFormatter()
         formatter.allowedUnits = [.hour, .minute, .second]
         formatter.zeroFormattingBehavior = .pad
-        return formatter.string(from: self) ?? "00:00:00"
-    }
+        return formatter
+    }()
 }

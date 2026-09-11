@@ -9,7 +9,8 @@ import SwiftUI
 import MapKit
 
 struct UIKitMapView: View {
-    let rides: [Ride]
+    var rides: [Ride] = []
+    var liveCoordinates: [CLLocationCoordinate2D] = []
     let lineColor: UIColor
     @ObservedObject var viewModel: MapViewModel
 
@@ -17,30 +18,35 @@ struct UIKitMapView: View {
         MapReader { proxy in
             Map(position: $viewModel.cameraPosition) {
                 UserAnnotation()
-                
+
                 if let navRoute = viewModel.navigationRoute {
                     MapPolyline(navRoute)
                         .stroke(.blue, lineWidth: 5)
-                    
+
                     if let dest = viewModel.navigationDestination {
                         Marker("Destination", coordinate: dest)
                     }
                 }
 
-                ForEach(Array(rides.enumerated()), id: \.offset) { index, ride in
-                    let coords = routeCoordinates(for: ride)
-                    if !coords.isEmpty {
+                if liveCoordinates.count > 1 {
+                    MapPolyline(coordinates: liveCoordinates)
+                        .stroke(Color(uiColor: lineColor), lineWidth: 4)
+
+                    if let lastCoord = liveCoordinates.last {
+                        MapCircle(center: lastCoord, radius: 8)
+                            .foregroundStyle(Color(uiColor: lineColor).opacity(0.4))
+                    }
+                }
+
+                ForEach(rides) { ride in
+                    let coords = ride.displayCoordinates
+                    if coords.count > 1 {
                         MapPolyline(coordinates: coords)
                             .stroke(Color(uiColor: lineColor), lineWidth: 4)
-                        
-                        if let lastCoord = coords.last {
-                            MapCircle(center: lastCoord, radius: 8)
-                                .foregroundStyle(Color(uiColor: lineColor).opacity(0.4))
-                        }
                     }
                 }
             }
-            .onMapCameraChange(frequency: .continuous) { context in
+            .onMapCameraChange(frequency: .onEnd) { _ in
                 if !viewModel.isProgrammaticRegionChange {
                     viewModel.shouldAutoCenter = false
                 }
@@ -62,14 +68,6 @@ struct UIKitMapView: View {
                         }
                     }
             )
-        }
-    }
-
-    private func routeCoordinates(for ride: Ride) -> [CLLocationCoordinate2D] {
-        if let matched = ride.matchedRoute, !matched.isEmpty {
-            return matched.map { $0.clLocationCoordinate2D }
-        } else {
-            return ride.route.map { $0.clLocationCoordinate2D }
         }
     }
 }

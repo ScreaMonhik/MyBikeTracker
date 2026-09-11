@@ -33,15 +33,17 @@ final class RidesViewModel: ObservableObject {
     func addRide(_ ride: Ride) {
         modelContext.insert(ride)
         save()
-        loadRides()
+        rides.insert(ride, at: 0)
+        WidgetDataService.shared.sync(rides: rides)
     }
 
     func deleteRide(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(rides[index])
+        let removed = offsets.sorted(by: >).map { rides.remove(at: $0) }
+        for ride in removed {
+            modelContext.delete(ride)
         }
         save()
-        loadRides()
+        WidgetDataService.shared.sync(rides: rides)
     }
 
     // MARK: - Export

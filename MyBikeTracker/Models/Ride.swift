@@ -29,21 +29,52 @@ final class Ride {
     /// Скорректированный маршрут (опционально)
     var matchedRouteData: Data? = nil
 
+    /// Reference-type cache so decode hits do not assign @Model properties
+    /// (that would publish from inside view updates).
+    @Transient private var coordinateCache = RideCoordinateCache()
+
     // MARK: - Удобные вычисляемые свойства (не хранятся в БД)
 
     var route: [Coordinate] {
-        get { (try? JSONDecoder().decode([Coordinate].self, from: routeData)) ?? [] }
-        set { routeData = (try? JSONEncoder().encode(newValue)) ?? Data() }
+        get {
+            if let cached = coordinateCache.route { return cached }
+            let decoded = (try? JSONDecoder().decode([Coordinate].self, from: routeData)) ?? []
+            coordinateCache.route = decoded
+            return decoded
+        }
+        set {
+            routeData = (try? JSONEncoder().encode(newValue)) ?? Data()
+            coordinateCache.route = newValue
+            coordinateCache.display = nil
+        }
     }
 
     var matchedRoute: [Coordinate]? {
         get {
+            if let cached = coordinateCache.matched { return cached }
             guard let data = matchedRouteData else { return nil }
-            return try? JSONDecoder().decode([Coordinate].self, from: data)
+            let decoded = try? JSONDecoder().decode([Coordinate].self, from: data)
+            coordinateCache.matched = decoded
+            return decoded
         }
         set {
             matchedRouteData = newValue.flatMap { try? JSONEncoder().encode($0) }
+            coordinateCache.matched = newValue
+            coordinateCache.display = nil
         }
+    }
+
+    /// Coordinates to draw on the map. Prefers the matched route when present.
+    var displayCoordinates: [CLLocationCoordinate2D] {
+        if let cached = coordinateCache.display { return cached }
+        let coords: [CLLocationCoordinate2D]
+        if let matched = matchedRoute, !matched.isEmpty {
+            coords = matched.map(\.clLocationCoordinate2D)
+        } else {
+            coords = route.map(\.clLocationCoordinate2D)
+        }
+        coordinateCache.display = coords
+        return coords
     }
 
     // MARK: - Вложенный тип координаты
@@ -92,4 +123,11 @@ final class Ride {
             self.matchedRoute = matched.map { Coordinate($0) }
         }
     }
+}
+
+/// Decoded-route cache that is not itself an observed @Model property.
+private final class RideCoordinateCache {
+    var route: [Ride.Coordinate]?
+    var matched: [Ride.Coordinate]?
+    var display: [CLLocationCoordinate2D]?
 }

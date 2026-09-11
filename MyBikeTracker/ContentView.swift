@@ -23,7 +23,7 @@ struct ContentView: View {
                     Label(LocalizedStringKey("map_tab_title"), systemImage: "map")
                 }
 
-            TrackerView(viewModel: mapViewModel, ridesViewModel: ridesViewModel) // Передаём ridesViewModel сюда
+            TrackerView(viewModel: mapViewModel)
                 .tabItem {
                     Label(LocalizedStringKey("trip_tab_title"), systemImage: "bicycle")
                 }

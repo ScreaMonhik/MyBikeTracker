@@ -24,10 +24,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     @Published var cameraPosition: MapCameraPosition = .automatic
 
     /// Точки текущего маршрута
-    @Published var route: [RoutePoint] = []
-
-    /// Отладочный лог (для внутреннего использования)
-    @Published var debugLog: String = ""
+    @Published var routeCoordinates: [CLLocationCoordinate2D] = []
 
     /// Время начала трекинга
     @Published var startTime: Date?
@@ -52,9 +49,6 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
     /// Пройденное расстояние в метрах
     @Published var traveledDistance: Double = 0
-
-    /// Уникальные названия улиц, которые пользователь посетил
-    @Published var visitedStreetNames: Set<String> = []
 
     /// Скорректированный маршрут после «мачинга» с помощью Mapbox
     @Published var matchedRoute: [CLLocationCoordinate2D] = []
@@ -124,8 +118,11 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     /// Время, когда скорость впервые стала ниже порога авто-паузы
     private var lowSpeedStartTime: Date?
 
-    /// Время последнего поиска улицы для оптимизации запросов
-    private var lastStreetSearchTime: Date?
+    /// Сколько точек уже учтено в `traveledDistance`
+    private var lastDistanceCount: Int = 0
+
+    /// Последние значения, отправленные в Live Activity — чтобы не слать дубликаты
+    private var lastLiveActivitySignature: (elapsed: Int, speed: Int, distance: Int, paused: Bool)?
 
     // MARK: - Инициализация
 
@@ -169,11 +166,10 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             }
             .store(in: &cancellables)
 
-        // Обновляем маршрут для отображения на карте
         locationService.$recordedLocations
             .receive(on: DispatchQueue.main)
             .sink { [weak self] locations in
-                self?.route = locations.map { RoutePoint(coordinate: $0.coordinate) }
+                self?.routeCoordinates = locations.map(\.coordinate)
             }
             .store(in: &cancellables)
     }
@@ -206,10 +202,6 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             updateCameraRegion(to: region)
         }
 
-        // Периодически определяем название ближайшей улицы
-        detectNearbyStreet(from: location)
-
-        // Проверяем необходимость перестроения маршрута
         checkRerouting(currentLocation: location)
     }
 
@@ -243,27 +235,6 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         cameraPosition = .region(region)
         currentRegion = region
         shouldAutoCenter = false
-    }
-
-    // MARK: - Поиск ближайшей улицы
-
-    /// Периодически (не чаще чем раз в 5 секунд) ищет ближайшую улицу и сохраняет её в набор посещённых
-    private func detectNearbyStreet(from location: CLLocation) {
-        let now = Date()
-        if let lastTime = lastStreetSearchTime, now.timeIntervalSince(lastTime) < 5 {
-            return
-        }
-        lastStreetSearchTime = now
-
-        let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-            guard let self = self,
-                  error == nil,
-                  let street = placemarks?.first?.thoroughfare else { return }
-            DispatchQueue.main.async {
-                self.visitedStreetNames.insert(street)
-            }
-        }
     }
 
     // MARK: - Navigation / Routing Logic
@@ -335,16 +306,20 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     private func distanceToPolyline(coordinate: CLLocationCoordinate2D, polyline: MKPolyline) -> CLLocationDistance {
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         var minDistance: CLLocationDistance = .greatestFiniteMagnitude
-        
+
         let pointCount = polyline.pointCount
+        guard pointCount > 0 else { return minDistance }
+
         let points = polyline.points()
-        for i in 0..<pointCount {
-            let ptCoordinate = points[i].coordinate
-            let ptLocation = CLLocation(latitude: ptCoordinate.latitude, longitude: ptCoordinate.longitude)
-            let distance = location.distance(from: ptLocation)
+        let step = max(1, pointCount / 80)
+        var index = 0
+        while index < pointCount {
+            let ptCoordinate = points[index].coordinate
+            let distance = location.distance(from: CLLocation(latitude: ptCoordinate.latitude, longitude: ptCoordinate.longitude))
             if distance < minDistance {
                 minDistance = distance
             }
+            index += step
         }
         return minDistance
     }
@@ -354,16 +329,18 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     /// Запускает трекинг: инициализация времени, сброс пауз и запуск сервисов
     func startTracking() {
         isTrackingActive = true
-        debugLog += "Start tracking...\n"
 
         startTime = Date()
         totalPausedTime = 0
         pauseStartTime = nil
         lowSpeedStartTime = nil
+        lastDistanceCount = 0
+        lastLiveActivitySignature = nil
         isPaused = false
         isAutoPaused = false
         shouldAutoCenter = true
         maxSpeed = 0
+        traveledDistance = 0
 
         locationService.startTracking()
         startMetrics()
@@ -385,7 +362,6 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     /// Останавливает трекинг и сохраняет поездку
     func stopTracking() {
         isTrackingActive = false
-        debugLog += "Stop tracking\n"
 
         locationService.stopTracking()
         stopMetrics()
@@ -407,7 +383,6 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         isPaused = true
         isAutoPaused = auto
         pauseStartTime = Date()
-        debugLog += auto ? "Auto-pause tracking\n" : "Pause tracking\n"
         locationService.pauseTracking()
         stopMetrics()
         Task { await liveActivityService?.update(elapsed: elapsedTime, speed: 0, distance: traveledDistance, isPaused: true) }
@@ -425,7 +400,6 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             totalPausedTime += Date().timeIntervalSince(pauseStart)
         }
         pauseStartTime = nil
-        debugLog += auto ? "Auto-resume tracking\n" : "Resume tracking\n"
         locationService.resumeTracking()
         startMetrics()
         Task { await liveActivityService?.update(elapsed: elapsedTime, speed: currentSpeed, distance: traveledDistance, isPaused: false) }
@@ -434,9 +408,14 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     // MARK: - Подсчёт скорости и времени
 
     private func startMetrics() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.updateMetrics()
+        stopMetrics()
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.updateMetrics()
+            }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     private func stopMetrics() {
@@ -476,7 +455,8 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             }
         }
 
-        // Средняя скорость — расстояние / время в часах
+        calculateTraveledDistance()
+
         let elapsedHours = elapsedTime / 3600
         if elapsedHours > 0 {
             averageSpeed = (traveledDistance / 1000) / elapsedHours
@@ -484,10 +464,19 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             averageSpeed = 0
         }
 
-        // Расчёт пройденного расстояния
-        calculateTraveledDistance()
+        pushLiveActivityIfNeeded()
+    }
 
-        // Обновляем Live Activity каждую секунду
+    private func pushLiveActivityIfNeeded() {
+        let signature = (
+            elapsed: Int(elapsedTime),
+            speed: Int(currentSpeed * 10),
+            distance: Int(traveledDistance),
+            paused: isPaused
+        )
+        guard lastLiveActivitySignature == nil || lastLiveActivitySignature! != signature else { return }
+        lastLiveActivitySignature = signature
+
         let elapsed = elapsedTime
         let speed = currentSpeed
         let distance = traveledDistance
@@ -499,15 +488,24 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         let locations = locationService.recordedLocations
         guard locations.count > 1 else {
             traveledDistance = 0
+            lastDistanceCount = locations.count
             return
         }
 
-        var distance: Double = 0
-        for i in 1..<locations.count {
-            distance += locations[i].distance(from: locations[i - 1])
+        if locations.count < lastDistanceCount {
+            lastDistanceCount = 0
+            traveledDistance = 0
         }
 
-        traveledDistance = distance
+        let startIndex = max(lastDistanceCount, 1)
+        if startIndex < locations.count {
+            var added: Double = 0
+            for index in startIndex..<locations.count {
+                added += locations[index].distance(from: locations[index - 1])
+            }
+            traveledDistance += added
+            lastDistanceCount = locations.count
+        }
     }
 
     // MARK: - Сохранение поездки
@@ -516,7 +514,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         guard let start = startTime else { return }
 
         let ride = Ride(
-            route: route.map { $0.coordinate },
+            route: routeCoordinates,
             startDate: start,
             endDate: Date(),
             distance: traveledDistance,
@@ -528,30 +526,23 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
         ridesViewModel?.addRide(ride)
 
-        debugLog += "Saved ride: \(ride.startDate)\n"
-
-        // Сохраняем тренировку в Apple Health (если включено в настройках)
         if healthKitEnabled, let hk = healthKitService {
             let locations = locationService.recordedLocations
             Task {
-                do {
-                    try await hk.saveWorkout(ride: ride, locations: locations)
-                } catch {
-                    debugLog += "HealthKit save error: \(error.localizedDescription)\n"
-                }
+                try? await hk.saveWorkout(ride: ride, locations: locations)
             }
         }
 
-        // Очистка для следующей поездки
-        route.removeAll()
+        routeCoordinates.removeAll()
         matchedRoute.removeAll()
-        visitedStreetNames.removeAll()
         elapsedTime = 0
         traveledDistance = 0
         currentSpeed = 0
         averageSpeed = 0
         maxSpeed = 0
         startTime = nil
+        lastDistanceCount = 0
+        lastLiveActivitySignature = nil
     }
 
 }

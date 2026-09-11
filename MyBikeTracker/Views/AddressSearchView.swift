@@ -14,7 +14,7 @@ struct AddressSearchView: View {
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Top Search Header
                 HStack(spacing: 12) {

@@ -12,11 +12,10 @@ struct SettingsView: View {
 
     @AppStorage(.trackerRouteColorKey) private var trackerColorName: String = RouteColor.red.rawValue
     @AppStorage(.historyRouteColorKey) private var historyColorName: String = RouteColor.blue.rawValue
-    @AppStorage("units_metric") private var unitsMetric = true
     @AppStorage("healthkit_enabled") private var healthKitEnabled = true
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 // MARK: - Цвет линий
                 Section(header: Text("Цвет маршрута")) {

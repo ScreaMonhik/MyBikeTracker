@@ -6,14 +6,11 @@
 //
 
 import SwiftUI
-import MapKit
-import CoreLocation
 
 struct TrackerView: View {
     @ObservedObject var viewModel: MapViewModel
-    @ObservedObject var ridesViewModel: RidesViewModel
-    @State private var showStopConfirmation: Bool = false
-    @State private var isShowingSearchSheet: Bool = false
+    @State private var showStopConfirmation = false
+    @State private var isShowingSearchSheet = false
 
     @AppStorage(.trackerRouteColorKey) private var trackerColorName: String = RouteColor.red.rawValue
 
@@ -21,190 +18,181 @@ struct TrackerView: View {
         RouteColor(rawValue: trackerColorName) ?? .red
     }
 
+    private var isRideActive: Bool {
+        viewModel.startTime != nil
+    }
+
     var body: some View {
         ZStack {
             mapSection
 
-            VStack {
-                if viewModel.startTime != nil {
-                    metricsPanel
-                        .transition(.opacity.combined(with: .slide))
+            VStack(spacing: 0) {
+                if isRideActive {
+                    rideInfoPlaque
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .animation(.easeInOut(duration: 0.7), value: viewModel.startTime)
 
-            VStack {
-                Spacer()
+                Spacer(minLength: 0)
 
-                HStack {
+                HStack(alignment: .bottom) {
                     Spacer()
-                    VStack(spacing: 12) {
-                        if viewModel.navigationRoute != nil {
-                            Button(action: {
-                                viewModel.clearRoute()
-                            }) {
-                                Image(systemName: "xmark") // Keep existing icon
-                                    .font(.title2.weight(.semibold))
-                                    .foregroundColor(.primary)
-                                    .frame(width: 50, height: 50)
-                                    .background(ChromeGlass(cornerRadius: 25))
-                                    .overlay(
-                                        Circle().strokeBorder(.white.opacity(0.3), lineWidth: 0.5)
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .fixedSize() // CRITICAL: Prevents greedy expansion
-                        }
-
-                        Button(action: {
-                            isShowingSearchSheet = true
-                        }) {
-                            Image(systemName: "magnifyingglass") // Keep existing icon
-                                .font(.title2.weight(.semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 50, height: 50)
-                                .background(ChromeGlass(cornerRadius: 25))
-                                .overlay(
-                                    Circle().strokeBorder(.white.opacity(0.3), lineWidth: 0.5)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .fixedSize() // CRITICAL: Prevents greedy expansion
-
-                        Button(action: {
-                            viewModel.forceAutoCenter()
-                        }) {
-                            Image(systemName: "location.fill") // Keep existing icon
-                                .font(.title2.weight(.semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 50, height: 50)
-                                .background(ChromeGlass(cornerRadius: 25))
-                                .overlay(
-                                    Circle().strokeBorder(.white.opacity(0.3), lineWidth: 0.5)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .fixedSize() // CRITICAL: Prevents greedy expansion
-                    }
-                    .padding(.trailing, 16)
-                    .padding(.bottom, 100)
+                    mapTools
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
 
                 controlButtons
+                    .padding(.bottom, 8)
             }
         }
+        .animation(.easeInOut(duration: 0.35), value: isRideActive)
+        .animation(.easeInOut(duration: 0.25), value: viewModel.isPaused)
         .sheet(isPresented: $isShowingSearchSheet) {
             AddressSearchView(viewModel: viewModel)
         }
     }
 
     private var mapSection: some View {
-        let currentRide = Ride(
-            route: viewModel.route.map { $0.coordinate },
-            startDate: viewModel.startTime ?? Date(),
-            endDate: Date(),
-            distance: viewModel.traveledDistance,
-            averageSpeed: viewModel.averageSpeed,
-            duration: viewModel.elapsedTime
+        UIKitMapView(
+            rides: [],
+            liveCoordinates: viewModel.routeCoordinates,
+            lineColor: trackerColor.uiColor,
+            viewModel: viewModel
         )
-        return UIKitMapView(rides: [currentRide], lineColor: trackerColor.uiColor, viewModel: viewModel)
-            .onAppear {
-                viewModel.forceAutoCenter()
-            }
-            .ignoresSafeArea()
+        .ignoresSafeArea()
+        .onAppear {
+            viewModel.forceAutoCenter()
+        }
     }
 
-    private var metricsPanel: some View {
-        HStack(spacing: 16) {
-            metricBox(title: LocalizedStringKey("time_title"), value: viewModel.elapsedTime.formattedAsTimer)
-            metricBox(title: LocalizedStringKey("speed_title"), value: String(format: "%.1f км/ч", viewModel.currentSpeed))
-            metricBox(title: LocalizedStringKey("distance_title"), value: String(format: "%.2f км", viewModel.traveledDistance / 1000))
+    private var rideInfoPlaque: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text(LocalizedStringKey("active_ride_title"))
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(viewModel.isPaused
+                     ? LocalizedStringKey("tracking_paused_badge")
+                     : LocalizedStringKey("tracking_live_badge"))
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule().fill(viewModel.isPaused ? Color.orange.opacity(0.22) : Color.green.opacity(0.22))
+                    )
+                    .foregroundStyle(viewModel.isPaused ? Color.orange : Color.green)
+            }
+
+            HStack(spacing: 0) {
+                metricBox(
+                    title: LocalizedStringKey("time_title"),
+                    value: viewModel.elapsedTime.formattedAsTimer
+                )
+                metricDivider
+                metricBox(
+                    title: LocalizedStringKey("speed_title"),
+                    value: String(format: "%.1f %@", viewModel.currentSpeed, NSLocalizedString("speed_unit", comment: ""))
+                )
+                metricDivider
+                metricBox(
+                    title: LocalizedStringKey("distance_title"),
+                    value: String(format: "%.2f %@", viewModel.traveledDistance / 1000, NSLocalizedString("distance_unit", comment: ""))
+                )
+            }
         }
-        .padding()
-        .background(
-            .ultraThinMaterial,
-            in: RoundedRectangle(cornerRadius: 12)
-        )
-        .environment(\.colorScheme, .dark)
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity)
+        .liquidGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private var metricDivider: some View {
+        Rectangle()
+            .fill(.primary.opacity(0.12))
+            .frame(width: 1, height: 36)
     }
 
     private func metricBox(title: LocalizedStringKey, value: String) -> some View {
-        VStack {
+        VStack(spacing: 4) {
             Text(title)
                 .font(.caption)
-                .foregroundColor(.secondary)
-            Text(value)
-                .font(.title3)
-                .bold()
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.5)
+            Text(value)
+                .font(.title3.weight(.bold).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
-        .frame(width: 100, height: 50)
-        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var mapTools: some View {
+        liquidGlassContainer(spacing: 10) {
+            VStack(spacing: 10) {
+                if viewModel.navigationRoute != nil {
+                    GlassMapButton(
+                        systemImage: "xmark",
+                        accessibilityKey: LocalizedStringKey("clear_route_title")
+                    ) {
+                        viewModel.clearRoute()
+                    }
+                }
+
+                GlassMapButton(
+                    systemImage: "magnifyingglass",
+                    accessibilityKey: LocalizedStringKey("search_address_title")
+                ) {
+                    isShowingSearchSheet = true
+                }
+
+                GlassMapButton(
+                    systemImage: viewModel.shouldAutoCenter ? "location.fill" : "location",
+                    accessibilityKey: LocalizedStringKey("center_map_title")
+                ) {
+                    viewModel.forceAutoCenter()
+                }
+            }
+        }
     }
 
     private var controlButtons: some View {
-        HStack {
-            if viewModel.startTime == nil {
-                Button(action: {
+        HStack(spacing: 12) {
+            if !isRideActive {
+                GlassActionButton(
+                    title: LocalizedStringKey("start_button_title"),
+                    systemImage: "play.fill",
+                    prominent: true,
+                    tint: .green
+                ) {
                     viewModel.startTracking()
-                }) {
-                    Label(LocalizedStringKey("start_button_title"), systemImage: "play.fill") // Keep existing label
-                        .font(.headline.weight(.semibold))
-                        .foregroundColor(.primary)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-                        .background(ChromeGlass(cornerRadius: 24))
-                        .overlay(
-                            Capsule().strokeBorder(.white.opacity(0.3), lineWidth: 0.5)
-                        )
                 }
-                .buttonStyle(.plain)
-                .fixedSize() // CRITICAL: Prevents greedy expansion
-
             } else {
-                Button(action: {
+                GlassActionButton(
+                    title: viewModel.isPaused
+                        ? LocalizedStringKey("resume_button_title")
+                        : LocalizedStringKey("pause_button_title"),
+                    systemImage: viewModel.isPaused ? "play.fill" : "pause.fill",
+                    prominent: viewModel.isPaused,
+                    tint: viewModel.isPaused ? .green : nil
+                ) {
                     if viewModel.isPaused {
                         viewModel.resumeTracking()
                     } else {
                         viewModel.pauseTracking()
                     }
-                }) {
-                    Label(viewModel.isPaused ? LocalizedStringKey("resume_button_title") : LocalizedStringKey("pause_button_title"),
-                          systemImage: viewModel.isPaused ? "play.fill" : "pause.fill") // Keep existing label
-                        .font(.headline.weight(.semibold))
-                        .foregroundColor(.primary)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-                        .background(ChromeGlass(cornerRadius: 24))
-                        .overlay(
-                            Capsule().strokeBorder(.white.opacity(0.3), lineWidth: 0.5)
-                        )
                 }
-                .buttonStyle(.plain)
-                .fixedSize() // CRITICAL: Prevents greedy expansion
 
-                Button(action: {
+                GlassActionButton(
+                    title: LocalizedStringKey("stop_button_title"),
+                    systemImage: "stop.fill",
+                    tint: .red
+                ) {
                     showStopConfirmation = true
-                }) {
-                    Label(LocalizedStringKey("stop_button_title"), systemImage: "stop.fill") // Keep existing label
-                        .font(.headline.weight(.semibold))
-                        .foregroundColor(.primary)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-                        .background(ChromeGlass(cornerRadius: 24))
-                        .overlay(
-                            Capsule().strokeBorder(.white.opacity(0.3), lineWidth: 0.5)
-                        )
                 }
-                .buttonStyle(.plain)
-                .fixedSize() // CRITICAL: Prevents greedy expansion
             }
         }
-        .padding(.bottom)
         .alert(LocalizedStringKey("stop_ride_confirmation"), isPresented: $showStopConfirmation) {
             Button(LocalizedStringKey("yes"), role: .destructive) {
                 viewModel.stopTracking()
