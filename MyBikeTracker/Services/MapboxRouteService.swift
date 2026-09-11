@@ -15,12 +15,15 @@ class MapboxRouteService {
     private let maxCoordinates = 100
 
     private var accessToken: String {
-        guard let token = Bundle.main.object(forInfoDictionaryKey: "MAPBOX_ACCESS_TOKEN") as? String,
-              !token.isEmpty else {
-            assertionFailure("MAPBOX_ACCESS_TOKEN не задан в Info.plist")
+        guard let token = Bundle.main.object(forInfoDictionaryKey: "MAPBOX_ACCESS_TOKEN") as? String else {
             return ""
         }
-        return token
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Unsubstituted $(MAPBOX_ACCESS_TOKEN) from Info.plist is not a usable key.
+        if trimmed.isEmpty || trimmed.hasPrefix("$(") {
+            return ""
+        }
+        return trimmed
     }
 
     func matchRoute(locations: [CLLocation]) async -> [CLLocationCoordinate2D] {
