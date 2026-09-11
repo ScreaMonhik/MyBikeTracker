@@ -18,13 +18,9 @@ struct TrackerView: View {
         _sensorService = ObservedObject(wrappedValue: viewModel.sensorService)
     }
 
-    @AppStorage(.trackerRouteColorKey) private var trackerColorName: String = RouteColor.red.rawValue
+    @AppStorage(.trackerRouteColorKey) private var trackerColorHex: String = RouteLineColor.defaultTrackerHex
     @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
     @AppStorage(PreferenceKey.selectedBikeId) private var selectedBikeId = ""
-
-    private var trackerColor: RouteColor {
-        RouteColor(rawValue: trackerColorName) ?? .red
-    }
 
     private var isRideActive: Bool {
         viewModel.startTime != nil
@@ -84,7 +80,7 @@ struct TrackerView: View {
             rides: [],
             liveCoordinates: viewModel.routeCoordinates,
             liveSegments: viewModel.routeSegments,
-            lineColor: trackerColor.uiColor,
+            lineColor: RouteLineColor.uiColor(from: trackerColorHex, fallbackHex: RouteLineColor.defaultTrackerHex),
             viewModel: viewModel
         )
         .ignoresSafeArea()

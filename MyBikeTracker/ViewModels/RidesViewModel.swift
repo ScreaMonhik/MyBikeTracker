@@ -24,6 +24,8 @@ final class RidesViewModel: ObservableObject {
     @Published var rides: [Ride] = []
     @Published var bikes: [Bike] = []
     @Published var journals: [DayJournal] = []
+    /// Bumps when a ride line color changes so the map redraws.
+    @Published private(set) var routeStyleRevision = 0
 
     private let modelContext: ModelContext
 
@@ -93,6 +95,12 @@ final class RidesViewModel: ObservableObject {
             applyOdometer(bikeId: bikeId, delta: ride.distance)
         }
         WidgetDataService.shared.sync(rides: rides)
+    }
+
+    func updateRideLineColor(_ ride: Ride, hex: String?) {
+        ride.lineColorHex = hex
+        save()
+        routeStyleRevision += 1
     }
 
     func applyMatchedRoute(_ ride: Ride, coordinates: [CLLocationCoordinate2D]) {
@@ -274,6 +282,7 @@ final class RidesViewModel: ObservableObject {
                 altitudes: altitudes
             )
             ride.id = dto.id
+            ride.lineColorHex = dto.lineColorHex
             modelContext.insert(ride)
             importedCount += 1
         }

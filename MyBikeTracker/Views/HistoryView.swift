@@ -42,7 +42,11 @@ struct HistoryView: View {
                 Section {
                     ForEach(ridesViewModel.rides) { ride in
                         NavigationLink {
-                            RideDetailView(ride: ride, bikeName: ridesViewModel.bike(for: ride)?.name)
+                            RideDetailView(
+                                ridesViewModel: ridesViewModel,
+                                ride: ride,
+                                bikeName: ridesViewModel.bike(for: ride)?.name
+                            )
                         } label: {
                             RideRowView(ride: ride)
                         }

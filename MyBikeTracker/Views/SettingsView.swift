@@ -12,8 +12,8 @@ struct SettingsView: View {
     @ObservedObject var mapViewModel: MapViewModel
     @ObservedObject var nfcService: NFCService
 
-    @AppStorage(.trackerRouteColorKey) private var trackerColorName: String = RouteColor.red.rawValue
-    @AppStorage(.historyRouteColorKey) private var historyColorName: String = RouteColor.blue.rawValue
+    @AppStorage(.trackerRouteColorKey) private var trackerColorHex: String = RouteLineColor.defaultTrackerHex
+    @AppStorage(.historyRouteColorKey) private var historyColorHex: String = RouteLineColor.defaultHistoryHex
     @AppStorage(PreferenceKey.healthKitEnabled) private var healthKitEnabled = true
     @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
     @AppStorage(PreferenceKey.weeklyGoalKilometers) private var weeklyGoalKilometers = 50.0
@@ -77,19 +77,21 @@ struct SettingsView: View {
 
                 BluetoothSensorsSection(sensorService: mapViewModel.sensorService)
 
-                // MARK: - Цвет линий
-                Section(header: Text("Цвет маршрута")) {
-                    colorPickerRow(
-                        title: "Во время поездки",
-                        selectedColorName: $trackerColorName,
-                        defaultColor: .red
+                Section {
+                    StoredRouteColorPicker(
+                        title: LocalizedStringKey("tracker_route_color"),
+                        hex: $trackerColorHex,
+                        fallbackHex: RouteLineColor.defaultTrackerHex
                     )
-
-                    colorPickerRow(
-                        title: "На общей карте",
-                        selectedColorName: $historyColorName,
-                        defaultColor: .blue
+                    StoredRouteColorPicker(
+                        title: LocalizedStringKey("history_route_color"),
+                        hex: $historyColorHex,
+                        fallbackHex: RouteLineColor.defaultHistoryHex
                     )
+                } header: {
+                    Text(LocalizedStringKey("route_color_section"))
+                } footer: {
+                    Text(LocalizedStringKey("route_color_footer"))
                 }
 
                 NFCTagsSettingsSection(nfcService: nfcService)
@@ -114,52 +116,5 @@ struct SettingsView: View {
                 UnitPreferences.set(DistanceUnitSystem(rawValue: unitSystemRaw) ?? .metric)
             }
         }
-    }
-
-    // MARK: - Color Picker Row
-
-    @ViewBuilder
-    private func colorPickerRow(
-        title: LocalizedStringKey,
-        selectedColorName: Binding<String>,
-        defaultColor: RouteColor
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(title)
-                Spacer()
-                // Превью выбранного цвета
-                let selected = RouteColor(rawValue: selectedColorName.wrappedValue) ?? defaultColor
-                Circle()
-                    .fill(selected.color)
-                    .frame(width: 22, height: 22)
-                    .overlay(Circle().stroke(Color.secondary.opacity(0.4), lineWidth: 1))
-            }
-
-            // Сетка цветов
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 8), spacing: 10) {
-                ForEach(RouteColor.allCases) { option in
-                    let isSelected = selectedColorName.wrappedValue == option.rawValue
-                    Button(action: {
-                        selectedColorName.wrappedValue = option.rawValue
-                    }) {
-                        Circle()
-                            .fill(option.color)
-                            .frame(width: 32, height: 32)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.primary, lineWidth: isSelected ? 3 : 0)
-                                    .padding(-3)
-                            )
-                            .shadow(color: option.color.opacity(0.5), radius: isSelected ? 4 : 0)
-                            .scaleEffect(isSelected ? 1.15 : 1.0)
-                            .animation(.spring(response: 0.25), value: isSelected)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.bottom, 4)
-        }
-        .padding(.vertical, 4)
     }
 }

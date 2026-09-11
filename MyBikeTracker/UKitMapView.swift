@@ -13,6 +13,10 @@ struct UIKitMapView: View {
     var liveCoordinates: [CLLocationCoordinate2D] = []
     var liveSegments: [[CLLocationCoordinate2D]] = []
     let lineColor: UIColor
+    var defaultRideColorHex: String = RouteLineColor.defaultHistoryHex
+    var routeStyleRevision: Int = 0
+    var selectedRideID: UUID?
+    var onRideTap: ((Ride) -> Void)?
     @ObservedObject var viewModel: MapViewModel
 
     private var resolvedLiveSegments: [[CLLocationCoordinate2D]] {
@@ -25,6 +29,7 @@ struct UIKitMapView: View {
     }
 
     var body: some View {
+        let _ = routeStyleRevision
         MapReader { proxy in
             Map(position: $viewModel.cameraPosition) {
                 UserAnnotation()
@@ -51,10 +56,12 @@ struct UIKitMapView: View {
                 }
 
                 ForEach(rides) { ride in
+                    let rideColor = ride.resolvedLineColor(defaultHex: defaultRideColorHex)
+                    let width: CGFloat = ride.id == selectedRideID ? 7 : 4
                     ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
                         if coords.count > 1 {
                             MapPolyline(coordinates: coords)
-                                .stroke(Color(uiColor: lineColor), lineWidth: 4)
+                                .stroke(rideColor, lineWidth: width)
                         }
                     }
                 }
@@ -64,6 +71,19 @@ struct UIKitMapView: View {
                     viewModel.shouldAutoCenter = false
                 }
             }
+            .simultaneousGesture(
+                SpatialTapGesture()
+                    .onEnded { event in
+                        guard let onRideTap, !rides.isEmpty else { return }
+                        if let ride = RideLineHitTesting.nearestRide(
+                            at: event.location,
+                            rides: rides,
+                            convert: { proxy.convert($0, to: .local) }
+                        ) {
+                            onRideTap(ride)
+                        }
+                    }
+            )
             .simultaneousGesture(
                 LongPressGesture(minimumDuration: 0.5)
                     .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))

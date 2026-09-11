@@ -20,6 +20,8 @@ final class Ride {
     var maxSpeed: Double      // км/ч
     var elevationGain: Double = 0
     var bikeId: UUID?
+    /// Custom map line color as `#RRGGBB`. `nil` uses the default map color from Settings.
+    var lineColorHex: String? = nil
 
     // MARK: - Хранение маршрутов как JSON Data
     // SwiftData не поддерживает [CustomCodableStruct] напрямую,
@@ -198,6 +200,8 @@ final class Ride {
     var elevationProfile: [ElevationSample] {
         ElevationCalculator.profile(from: route)
     }
+
+    var hasCustomLineColor: Bool { lineColorHex != nil }
 }
 
 /// Decoded-route cache that is not itself an observed @Model property.

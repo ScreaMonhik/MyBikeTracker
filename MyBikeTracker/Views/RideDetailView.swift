@@ -11,17 +11,21 @@ import MapKit
 struct RideDetailView: View {
     @State private var currentRegion: MKCoordinateRegion?
     @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
+    @AppStorage(.historyRouteColorKey) private var historyColorHex: String = RouteLineColor.defaultHistoryHex
+    @ObservedObject var ridesViewModel: RidesViewModel
     let ride: Ride
     var bikeName: String?
 
     var body: some View {
+        let rideColor = ride.resolvedLineColor(defaultHex: historyColorHex)
+        let _ = ridesViewModel.routeStyleRevision
         ScrollView {
             VStack(spacing: 0) {
                 Map {
                     ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
                         if coords.count > 1 {
                             MapPolyline(coordinates: coords)
-                                .stroke(Color.blue.opacity(0.8), lineWidth: 3)
+                                .stroke(rideColor, lineWidth: 3)
                         }
                     }
                 }
@@ -48,6 +52,9 @@ struct RideDetailView: View {
                     if let bikeName {
                         infoRow(label: LocalizedStringKey("garage_bike_name"), value: bikeName)
                     }
+
+                    RideLineColorEditor(ride: ride, ridesViewModel: ridesViewModel)
+                        .padding(.top, 4)
 
                     let profile = ride.elevationProfile
                     if profile.count > 1 {
