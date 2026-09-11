@@ -10,19 +10,19 @@ import MapKit
 
 struct RideDetailView: View {
     @State private var currentRegion: MKCoordinateRegion?
+    @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
     let ride: Ride
+    var bikeName: String?
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 Map {
-                    if let matched = ride.matchedRoute, matched.count > 1 {
-                        let coords = matched.map { $0.clLocationCoordinate2D }
-                        MapPolyline(coordinates: coords)
-                            .stroke(Color.blue.opacity(0.8), lineWidth: 3)
-                    } else if ride.route.count > 1 {
-                        MapPolyline(coordinates: ride.route.map { $0.clLocationCoordinate2D })
-                            .stroke(Color.orange.opacity(0.8), lineWidth: 3)
+                    ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
+                        if coords.count > 1 {
+                            MapPolyline(coordinates: coords)
+                                .stroke(Color.blue.opacity(0.8), lineWidth: 3)
+                        }
                     }
                 }
                 .frame(height: 300)
@@ -36,11 +36,24 @@ struct RideDetailView: View {
                     infoRow(label: LocalizedStringKey("duration_title"),
                             value: ride.duration.formattedAsTimer)
                     infoRow(label: LocalizedStringKey("distance_title"),
-                            value: String(format: "%.2f %@", ride.distance / 1000, NSLocalizedString("distance_unit", comment: "")))
+                            value: RideFormatters.distance(meters: ride.distance))
                     infoRow(label: LocalizedStringKey("average_speed_title"),
-                            value: String(format: "%.1f %@", ride.averageSpeed, NSLocalizedString("speed_unit", comment: "")))
+                            value: RideFormatters.speed(kmh: ride.averageSpeed))
                     infoRow(label: LocalizedStringKey("max_speed_title"),
-                            value: String(format: "%.1f %@", ride.maxSpeed, NSLocalizedString("speed_unit", comment: "")))
+                            value: RideFormatters.speed(kmh: ride.maxSpeed))
+                    if ride.resolvedElevationGain > 0 {
+                        infoRow(label: LocalizedStringKey("elevation_title"),
+                                value: RideFormatters.elevation(meters: ride.resolvedElevationGain))
+                    }
+                    if let bikeName {
+                        infoRow(label: LocalizedStringKey("garage_bike_name"), value: bikeName)
+                    }
+
+                    let profile = ride.elevationProfile
+                    if profile.count > 1 {
+                        ElevationProfileView(samples: profile)
+                            .padding(.top, 8)
+                    }
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)

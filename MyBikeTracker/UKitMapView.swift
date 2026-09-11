@@ -11,8 +11,18 @@ import MapKit
 struct UIKitMapView: View {
     var rides: [Ride] = []
     var liveCoordinates: [CLLocationCoordinate2D] = []
+    var liveSegments: [[CLLocationCoordinate2D]] = []
     let lineColor: UIColor
     @ObservedObject var viewModel: MapViewModel
+
+    private var resolvedLiveSegments: [[CLLocationCoordinate2D]] {
+        if !liveSegments.isEmpty { return liveSegments }
+        guard liveCoordinates.count > 1 else { return [] }
+        return RideTrackGeometry.coordinateSegments(
+            liveCoordinates,
+            maxJump: RideTrackGeometry.liveGapDistance
+        )
+    }
 
     var body: some View {
         MapReader { proxy in
@@ -28,21 +38,24 @@ struct UIKitMapView: View {
                     }
                 }
 
-                if liveCoordinates.count > 1 {
-                    MapPolyline(coordinates: liveCoordinates)
-                        .stroke(Color(uiColor: lineColor), lineWidth: 4)
-
-                    if let lastCoord = liveCoordinates.last {
-                        MapCircle(center: lastCoord, radius: 8)
-                            .foregroundStyle(Color(uiColor: lineColor).opacity(0.4))
-                    }
-                }
-
-                ForEach(rides) { ride in
-                    let coords = ride.displayCoordinates
+                ForEach(Array(resolvedLiveSegments.enumerated()), id: \.offset) { _, coords in
                     if coords.count > 1 {
                         MapPolyline(coordinates: coords)
                             .stroke(Color(uiColor: lineColor), lineWidth: 4)
+                    }
+                }
+
+                if let lastCoord = resolvedLiveSegments.last?.last ?? liveCoordinates.last {
+                    MapCircle(center: lastCoord, radius: 8)
+                        .foregroundStyle(Color(uiColor: lineColor).opacity(0.4))
+                }
+
+                ForEach(rides) { ride in
+                    ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
+                        if coords.count > 1 {
+                            MapPolyline(coordinates: coords)
+                                .stroke(Color(uiColor: lineColor), lineWidth: 4)
+                        }
                     }
                 }
             }

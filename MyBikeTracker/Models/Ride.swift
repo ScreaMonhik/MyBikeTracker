@@ -18,6 +18,8 @@ final class Ride {
     var distance: Double      // метры
     var averageSpeed: Double  // км/ч
     var maxSpeed: Double      // км/ч
+    var elevationGain: Double = 0
+    var bikeId: UUID?
 
     // MARK: - Хранение маршрутов как JSON Data
     // SwiftData не поддерживает [CustomCodableStruct] напрямую,
@@ -45,7 +47,7 @@ final class Ride {
         set {
             routeData = (try? JSONEncoder().encode(newValue)) ?? Data()
             coordinateCache.route = newValue
-            coordinateCache.display = nil
+            coordinateCache.displaySegments = nil
         }
     }
 
@@ -60,21 +62,32 @@ final class Ride {
         set {
             matchedRouteData = newValue.flatMap { try? JSONEncoder().encode($0) }
             coordinateCache.matched = newValue
-            coordinateCache.display = nil
+            coordinateCache.displaySegments = nil
         }
     }
 
     /// Coordinates to draw on the map. Prefers the matched route when present.
     var displayCoordinates: [CLLocationCoordinate2D] {
-        if let cached = coordinateCache.display { return cached }
-        let coords: [CLLocationCoordinate2D]
+        displaySegments.flatMap { $0 }
+    }
+
+    /// Separate polylines so a GPS / network blackout is never joined by a straight cut.
+    var displaySegments: [[CLLocationCoordinate2D]] {
+        if let cached = coordinateCache.displaySegments { return cached }
+        let segments: [[CLLocationCoordinate2D]]
         if let matched = matchedRoute, !matched.isEmpty {
-            coords = matched.map(\.clLocationCoordinate2D)
+            segments = RideTrackGeometry.coordinateSegments(
+                matched.map(\.clLocationCoordinate2D),
+                maxJump: RideTrackGeometry.matchedGapDistance
+            )
         } else {
-            coords = route.map(\.clLocationCoordinate2D)
+            segments = RideTrackGeometry.coordinateSegments(
+                route.map(\.clLocationCoordinate2D),
+                maxJump: RideTrackGeometry.liveGapDistance
+            )
         }
-        coordinateCache.display = coords
-        return coords
+        coordinateCache.displaySegments = segments
+        return segments
     }
 
     // MARK: - Вложенный тип координаты
@@ -82,10 +95,25 @@ final class Ride {
     struct Coordinate: Codable {
         let latitude: Double
         let longitude: Double
+        var altitude: Double?
+        var timestamp: TimeInterval?
 
-        init(_ location: CLLocationCoordinate2D) {
+        init(_ location: CLLocationCoordinate2D, altitude: Double? = nil, timestamp: TimeInterval? = nil) {
             self.latitude = location.latitude
             self.longitude = location.longitude
+            self.altitude = altitude
+            self.timestamp = timestamp
+        }
+
+        init(_ location: CLLocation) {
+            self.latitude = location.coordinate.latitude
+            self.longitude = location.coordinate.longitude
+            if location.verticalAccuracy >= 0 && location.verticalAccuracy <= 20 {
+                self.altitude = location.altitude
+            } else {
+                self.altitude = nil
+            }
+            self.timestamp = location.timestamp.timeIntervalSince1970
         }
 
         var clLocationCoordinate2D: CLLocationCoordinate2D {
@@ -103,7 +131,10 @@ final class Ride {
         averageSpeed: Double,
         maxSpeed: Double = 0,
         duration: TimeInterval,
-        matchedRoute: [CLLocationCoordinate2D]? = nil
+        matchedRoute: [CLLocationCoordinate2D]? = nil,
+        elevationGain: Double = 0,
+        bikeId: UUID? = nil,
+        altitudes: [Double?] = []
     ) {
         self.id = UUID()
         self.startDate = startDate
@@ -112,16 +143,60 @@ final class Ride {
         self.distance = distance
         self.averageSpeed = averageSpeed
         self.maxSpeed = maxSpeed
+        self.elevationGain = elevationGain
+        self.bikeId = bikeId
 
         // Инициализируем хранимые поля перед использованием сеттеров
         self.routeData = Data()
         self.matchedRouteData = nil
 
-        // Кодируем маршруты через вычисляемые сеттеры
-        self.route = route.map { Coordinate($0) }
+        if altitudes.isEmpty {
+            self.route = route.map { Coordinate($0) }
+        } else {
+            self.route = zip(route, altitudes).map { Coordinate($0, altitude: $1) }
+            if route.count > altitudes.count {
+                self.route.append(contentsOf: route[altitudes.count...].map { Coordinate($0) })
+            }
+        }
         if let matched = matchedRoute {
             self.matchedRoute = matched.map { Coordinate($0) }
         }
+    }
+
+    convenience init(
+        locations: [CLLocation],
+        startDate: Date,
+        endDate: Date,
+        distance: Double,
+        averageSpeed: Double,
+        maxSpeed: Double = 0,
+        duration: TimeInterval,
+        matchedRoute: [CLLocationCoordinate2D]? = nil,
+        elevationGain: Double? = nil,
+        bikeId: UUID? = nil
+    ) {
+        self.init(
+            route: locations.map(\.coordinate),
+            startDate: startDate,
+            endDate: endDate,
+            distance: distance,
+            averageSpeed: averageSpeed,
+            maxSpeed: maxSpeed,
+            duration: duration,
+            matchedRoute: matchedRoute,
+            elevationGain: elevationGain ?? ElevationCalculator.gain(from: locations),
+            bikeId: bikeId
+        )
+        self.route = locations.map { Coordinate($0) }
+    }
+
+    var resolvedElevationGain: Double {
+        if elevationGain > 0 { return elevationGain }
+        return ElevationCalculator.gain(from: route)
+    }
+
+    var elevationProfile: [ElevationSample] {
+        ElevationCalculator.profile(from: route)
     }
 }
 
@@ -129,5 +204,5 @@ final class Ride {
 private final class RideCoordinateCache {
     var route: [Ride.Coordinate]?
     var matched: [Ride.Coordinate]?
-    var display: [CLLocationCoordinate2D]?
+    var displaySegments: [[CLLocationCoordinate2D]]?
 }

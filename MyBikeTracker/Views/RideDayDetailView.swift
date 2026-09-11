@@ -10,6 +10,8 @@ import SwiftUI
 struct RideDayDetailView: View {
     let date: Date
     let rides: [Ride]
+    @ObservedObject var ridesViewModel: RidesViewModel
+    @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
 
     private var sortedRides: [Ride] {
         rides.sorted { $0.startDate < $1.startDate }
@@ -23,20 +25,29 @@ struct RideDayDetailView: View {
         rides.reduce(0) { $0 + $1.duration }
     }
 
+    private var totalElevation: Double {
+        rides.reduce(0) { $0 + $1.resolvedElevationGain }
+    }
+
     var body: some View {
         Group {
             if rides.isEmpty {
-                emptyState
+                List {
+                    DayJournalSection(ridesViewModel: ridesViewModel, date: date)
+                    emptyState
+                }
             } else {
                 List {
                     Section {
                         daySummary
                     }
 
+                    DayJournalSection(ridesViewModel: ridesViewModel, date: date)
+
                     Section {
                         ForEach(sortedRides) { ride in
                             NavigationLink {
-                                RideDetailView(ride: ride)
+                                RideDetailView(ride: ride, bikeName: ridesViewModel.bike(for: ride)?.name)
                             } label: {
                                 RideRowView(ride: ride, showsDate: false)
                             }
@@ -60,12 +71,18 @@ struct RideDayDetailView: View {
             HStack(spacing: 16) {
                 labeledValue(
                     LocalizedStringKey("distance_title"),
-                    String(format: "%.2f %@", totalDistance / 1000, NSLocalizedString("distance_unit", comment: ""))
+                    RideFormatters.distance(meters: totalDistance)
                 )
                 labeledValue(
                     LocalizedStringKey("duration_title"),
                     totalDuration.formattedAsTimer
                 )
+                if totalElevation > 0 {
+                    labeledValue(
+                        LocalizedStringKey("elevation_title"),
+                        RideFormatters.elevation(meters: totalElevation)
+                    )
+                }
             }
         }
         .padding(.vertical, 4)

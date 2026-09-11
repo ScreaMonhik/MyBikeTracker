@@ -3,6 +3,7 @@ import SwiftUI
 struct RideRowView: View {
     let ride: Ride
     var showsDate: Bool = true
+    @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -18,18 +19,12 @@ struct RideRowView: View {
             }
 
             metric(LocalizedStringKey("duration_title"), ride.duration.formattedAsTimer)
-            metric(
-                LocalizedStringKey("distance_title"),
-                String(format: "%.2f %@", ride.distance / 1000, NSLocalizedString("distance_unit", comment: ""))
-            )
-            metric(
-                LocalizedStringKey("average_speed_title"),
-                String(format: "%.1f %@", ride.averageSpeed, NSLocalizedString("speed_unit", comment: ""))
-            )
-            metric(
-                LocalizedStringKey("max_speed_title"),
-                String(format: "%.1f %@", ride.maxSpeed, NSLocalizedString("speed_unit", comment: ""))
-            )
+            metric(LocalizedStringKey("distance_title"), RideFormatters.distance(meters: ride.distance))
+            metric(LocalizedStringKey("average_speed_title"), RideFormatters.speed(kmh: ride.averageSpeed))
+            metric(LocalizedStringKey("max_speed_title"), RideFormatters.speed(kmh: ride.maxSpeed))
+            if ride.resolvedElevationGain > 0 {
+                metric(LocalizedStringKey("elevation_title"), RideFormatters.elevation(meters: ride.resolvedElevationGain))
+            }
         }
         .padding(.vertical, 4)
     }

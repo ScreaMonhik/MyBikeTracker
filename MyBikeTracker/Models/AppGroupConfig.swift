@@ -14,4 +14,5 @@ enum AppGroup {
 
     /// UserDefaults key for the widget ride data array.
     static let widgetRidesKey = "widget_rides"
+
 }

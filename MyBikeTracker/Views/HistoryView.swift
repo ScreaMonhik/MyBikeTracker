@@ -9,29 +9,55 @@ import SwiftUI
 
 struct HistoryView: View {
     @ObservedObject var ridesViewModel: RidesViewModel
+    @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
     @State private var showDeleteConfirmation = false
     @State private var indexSetToDelete: IndexSet?
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(ridesViewModel.rides) { ride in
-                    NavigationLink {
-                        RideDetailView(ride: ride)
-                    } label: {
-                        RideRowView(ride: ride)
+                Section {
+                    WeeklyGoalCard(
+                        thisWeek: ridesViewModel.thisWeek,
+                        lastWeek: ridesViewModel.lastWeek
+                    )
+                }
+
+                if !ridesViewModel.chainDueBikes.isEmpty {
+                    Section {
+                        ForEach(ridesViewModel.chainDueBikes, id: \.id) { bike in
+                            Label {
+                                Text(String(
+                                    format: NSLocalizedString("garage_chain_due_named", comment: ""),
+                                    bike.name
+                                ))
+                            } icon: {
+                                Image(systemName: "wrench.and.screwdriver")
+                            }
+                            .foregroundStyle(.orange)
+                        }
                     }
                 }
-                .onDelete { offsets in
-                    indexSetToDelete = offsets
-                    showDeleteConfirmation = true
+
+                Section {
+                    ForEach(ridesViewModel.rides) { ride in
+                        NavigationLink {
+                            RideDetailView(ride: ride, bikeName: ridesViewModel.bike(for: ride)?.name)
+                        } label: {
+                            RideRowView(ride: ride)
+                        }
+                    }
+                    .onDelete { offsets in
+                        indexSetToDelete = offsets
+                        showDeleteConfirmation = true
+                    }
                 }
             }
             .navigationTitle(LocalizedStringKey("history_title"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
-                        RideCalendarView(rides: ridesViewModel.rides)
+                        RideCalendarView(ridesViewModel: ridesViewModel)
                     } label: {
                         Image(systemName: "calendar")
                             .font(.title3)

@@ -23,8 +23,25 @@ class MapboxRouteService {
         return token
     }
 
+    func matchRoute(locations: [CLLocation]) async -> [CLLocationCoordinate2D] {
+        await withCheckedContinuation { continuation in
+            matchRoute(locations: locations) { result in
+                switch result {
+                case .success(let coords):
+                    continuation.resume(returning: coords)
+                case .failure:
+                    continuation.resume(returning: [])
+                }
+            }
+        }
+    }
+
     func matchRoute(locations: [CLLocation], completion: @escaping (Result<[CLLocationCoordinate2D], Error>) -> Void) {
         guard !locations.isEmpty else {
+            completion(.success([]))
+            return
+        }
+        guard !accessToken.isEmpty else {
             completion(.success([]))
             return
         }

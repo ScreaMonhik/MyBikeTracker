@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct RideCalendarView: View {
-    let rides: [Ride]
+    @ObservedObject var ridesViewModel: RidesViewModel
+    private var rides: [Ride] { ridesViewModel.rides }
 
     @State private var displayedMonth: Date = Date().startOfMonth
     @State private var showsYearView = false
@@ -98,7 +99,7 @@ struct RideCalendarView: View {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 8) {
                 ForEach(CalendarGrid.days(for: displayedMonth, calendar: calendar)) { day in
                     NavigationLink {
-                        RideDayDetailView(date: day.date, rides: rides(on: day.date))
+                        RideDayDetailView(date: day.date, rides: rides(on: day.date), ridesViewModel: ridesViewModel)
                     } label: {
                         MonthDayCell(
                             date: day.date,
@@ -148,7 +149,8 @@ struct RideCalendarView: View {
                     MiniMonthView(
                         month: month,
                         weekdaySymbols: weekdaySymbols,
-                        ridesByDay: ridesByDay
+                        ridesByDay: ridesByDay,
+                        ridesViewModel: ridesViewModel
                     ) {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             displayedMonth = month.startOfMonth
@@ -256,6 +258,7 @@ private struct MiniMonthView: View {
     let month: Date
     let weekdaySymbols: [String]
     let ridesByDay: [DateComponents: [Ride]]
+    @ObservedObject var ridesViewModel: RidesViewModel
     let onSelectMonth: () -> Void
 
     private let calendar = Calendar.current
@@ -284,7 +287,7 @@ private struct MiniMonthView: View {
                 ForEach(CalendarGrid.days(for: month, calendar: calendar)) { day in
                     if day.isInDisplayedMonth {
                         NavigationLink {
-                            RideDayDetailView(date: day.date, rides: rides(on: day.date))
+                            RideDayDetailView(date: day.date, rides: rides(on: day.date), ridesViewModel: ridesViewModel)
                         } label: {
                             miniDayLabel(day)
                         }
