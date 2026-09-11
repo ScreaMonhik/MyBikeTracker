@@ -10,7 +10,6 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var ridesViewModel: RidesViewModel
     @ObservedObject var mapViewModel: MapViewModel
-    @ObservedObject var nfcService: NFCService
 
     @AppStorage(.trackerRouteColorKey) private var trackerColorHex: String = RouteLineColor.defaultTrackerHex
     @AppStorage(.historyRouteColorKey) private var historyColorHex: String = RouteLineColor.defaultHistoryHex
@@ -94,8 +93,6 @@ struct SettingsView: View {
                     Text(LocalizedStringKey("route_color_footer"))
                 }
 
-                NFCTagsSettingsSection(nfcService: nfcService)
-
                 // MARK: - Apple Health
                 Section(header: Text(LocalizedStringKey("healthkit_section"))) {
                     Toggle(LocalizedStringKey("healthkit_toggle"), isOn: $healthKitEnabled)
@@ -106,8 +103,7 @@ struct SettingsView: View {
                 #if DEBUG
                 DeveloperSettingsSection(
                     mapViewModel: mapViewModel,
-                    ridesViewModel: ridesViewModel,
-                    nfcService: nfcService
+                    ridesViewModel: ridesViewModel
                 )
                 #endif
             }

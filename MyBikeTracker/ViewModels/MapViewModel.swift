@@ -65,7 +65,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     /// Трекинг активен/неактивен
     @Published var isTrackingActive: Bool = false
 
-    /// Полноэкранное подтверждение завершения поездки (кнопка Стоп или NFC)
+    /// Полноэкранное подтверждение завершения поездки
     @Published var isEndRideConfirmationPresented = false
 
     var isRideInProgress: Bool {

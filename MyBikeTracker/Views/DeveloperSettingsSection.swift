@@ -4,7 +4,6 @@ import SwiftUI
 struct DeveloperSettingsSection: View {
     @ObservedObject var mapViewModel: MapViewModel
     @ObservedObject var ridesViewModel: RidesViewModel
-    @ObservedObject var nfcService: NFCService
 
     @State private var seedMessage: String?
 
@@ -28,12 +27,6 @@ struct DeveloperSettingsSection: View {
                 Label(LocalizedStringKey("developer_stop_simulation"), systemImage: "dot.scope")
             }
             .disabled(!mapViewModel.isDeveloperSimulationActive)
-
-            Button {
-                nfcService.simulateTap(action: .toggleRide)
-            } label: {
-                Label(LocalizedStringKey("developer_simulate_nfc"), systemImage: "wave.3.right")
-            }
 
             Button {
                 let before = ridesViewModel.rides.count

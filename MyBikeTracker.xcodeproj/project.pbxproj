@@ -501,7 +501,6 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MyBikeTracker/Info.plist;
-				INFOPLIST_KEY_NFCReaderUsageDescription = "MyBikeTracker uses NFC tags to start and finish your rides.";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "MyBikeTracker connects to heart rate and cycling sensors.";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "MyBikeTracker connects to heart rate and cycling sensors.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "MyBikeTracker adds a photo to the day in History.";
@@ -543,7 +542,6 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MyBikeTracker/Info.plist;
-				INFOPLIST_KEY_NFCReaderUsageDescription = "MyBikeTracker uses NFC tags to start and finish your rides.";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "MyBikeTracker connects to heart rate and cycling sensors.";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "MyBikeTracker connects to heart rate and cycling sensors.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "MyBikeTracker adds a photo to the day in History.";

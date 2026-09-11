@@ -14,7 +14,6 @@ struct MyBikeTrackerApp: App {
     let locationService: LocationService
     let ridesViewModel: RidesViewModel
     let mapViewModel: MapViewModel
-    let nfcService: NFCService
 
     init() {
         let schema = Schema([Ride.self, Bike.self, DayJournal.self])
@@ -47,12 +46,11 @@ struct MyBikeTrackerApp: App {
             healthKitService: healthKitService,
             liveActivityService: liveActivityService
         )
-        nfcService = NFCService()
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView(mapViewModel: mapViewModel, ridesViewModel: ridesViewModel, nfcService: nfcService)
+            ContentView(mapViewModel: mapViewModel, ridesViewModel: ridesViewModel)
         }
         .modelContainer(container)
     }
