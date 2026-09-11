@@ -6,11 +6,13 @@
 //
 
 import SwiftUI
+import CoreLocation
 
 struct HomeMapView: View {
     @ObservedObject var viewModel: MapViewModel
     @ObservedObject var ridesViewModel: RidesViewModel
-    @State private var rideForColorEdit: RideColorTarget?
+    @State private var ridePopup: RideLinePopupTarget?
+    @State private var isRidePopupVisible = false
 
     @AppStorage(.historyRouteColorKey) private var historyColorHex: String = RouteLineColor.defaultHistoryHex
 
@@ -22,9 +24,15 @@ struct HomeMapView: View {
                     lineColor: RouteLineColor.uiColor(from: historyColorHex),
                     defaultRideColorHex: historyColorHex,
                     routeStyleRevision: ridesViewModel.routeStyleRevision,
-                    selectedRideID: rideForColorEdit?.id,
-                    onRideTap: { ride in
-                        rideForColorEdit = RideColorTarget(ride)
+                    selectedRideID: isRidePopupVisible ? ridePopup?.id : nil,
+                    ridePopup: ridePopup,
+                    isRidePopupVisible: isRidePopupVisible,
+                    ridesViewModel: ridesViewModel,
+                    onRideTap: { ride, coordinate in
+                        presentPopup(for: ride, at: coordinate)
+                    },
+                    onEmptyMapTap: {
+                        dismissPopup()
                     },
                     viewModel: viewModel
                 )
@@ -46,19 +54,20 @@ struct HomeMapView: View {
             }
             .navigationTitle(LocalizedStringKey("map_tab_title"))
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(item: $rideForColorEdit) { target in
-                RideLineColorSheet(ride: target.ride, ridesViewModel: ridesViewModel)
-            }
         }
     }
-}
 
-private struct RideColorTarget: Identifiable {
-    let id: UUID
-    let ride: Ride
+    private func presentPopup(for ride: Ride, at coordinate: CLLocationCoordinate2D) {
+        withAnimation(RideLinePopupMotion.present) {
+            ridePopup = RideLinePopupTarget(ride, coordinate: coordinate)
+            isRidePopupVisible = true
+        }
+    }
 
-    init(_ ride: Ride) {
-        self.id = ride.id
-        self.ride = ride
+    private func dismissPopup() {
+        guard isRidePopupVisible else { return }
+        withAnimation(RideLinePopupMotion.dismiss) {
+            isRidePopupVisible = false
+        }
     }
 }

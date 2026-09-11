@@ -4,12 +4,14 @@ import SwiftUI
 struct RideLineColorEditor: View {
     let ride: Ride
     @ObservedObject var ridesViewModel: RidesViewModel
+    var compact: Bool = false
     @AppStorage(.historyRouteColorKey) private var defaultHex = RouteLineColor.defaultHistoryHex
     @State private var selection: Color
 
-    init(ride: Ride, ridesViewModel: RidesViewModel) {
+    init(ride: Ride, ridesViewModel: RidesViewModel, compact: Bool = false) {
         self.ride = ride
         self.ridesViewModel = ridesViewModel
+        self.compact = compact
         let fallback = UserDefaults.standard.string(forKey: .historyRouteColorKey)
             ?? RouteLineColor.defaultHistoryHex
         _selection = State(initialValue: ride.resolvedLineColor(defaultHex: fallback))
@@ -17,15 +19,14 @@ struct RideLineColorEditor: View {
 
     var body: some View {
         Group {
-            ColorPicker(
-                LocalizedStringKey("ride_line_color"),
-                selection: $selection,
-                supportsOpacity: false
-            )
-            .onChange(of: selection) { _, newValue in
-                let hex = RouteLineColor.hexString(from: newValue)
-                guard hex != ride.lineColorHex else { return }
-                ridesViewModel.updateRideLineColor(ride, hex: hex)
+            if compact {
+                compactEditor
+            } else {
+                ColorPicker(
+                    LocalizedStringKey("ride_line_color"),
+                    selection: $selection,
+                    supportsOpacity: false
+                )
             }
 
             if ride.hasCustomLineColor {
@@ -33,10 +34,35 @@ struct RideLineColorEditor: View {
                     ridesViewModel.updateRideLineColor(ride, hex: nil)
                     selection = RouteLineColor.color(from: defaultHex, fallbackHex: defaultHex)
                 } label: {
-                    Text(LocalizedStringKey("ride_line_color_reset"))
+                    if compact {
+                        Label(LocalizedStringKey("ride_line_color_reset"), systemImage: "arrow.counterclockwise")
+                            .font(.caption.weight(.semibold))
+                    } else {
+                        Text(LocalizedStringKey("ride_line_color_reset"))
+                    }
                 }
             }
         }
+        .onChange(of: selection) { _, newValue in
+            let hex = RouteLineColor.hexString(from: newValue)
+            guard hex != ride.lineColorHex else { return }
+            ridesViewModel.updateRideLineColor(ride, hex: hex)
+        }
+        .onChange(of: ridesViewModel.routeStyleRevision) { _, _ in
+            let resolved = ride.resolvedLineColor(defaultHex: defaultHex)
+            if RouteLineColor.hexString(from: selection) != RouteLineColor.hexString(from: resolved) {
+                selection = resolved
+            }
+        }
+    }
+
+    private var compactEditor: some View {
+        ColorPicker(
+            LocalizedStringKey("ride_line_color"),
+            selection: $selection,
+            supportsOpacity: false
+        )
+        .font(.subheadline.weight(.medium))
     }
 }
 
