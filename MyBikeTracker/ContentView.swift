@@ -17,13 +17,11 @@ enum AppTab: Hashable {
 struct ContentView: View {
     @StateObject var mapViewModel: MapViewModel
     @StateObject var ridesViewModel: RidesViewModel
-    @StateObject var nfcService: NFCService
     @State private var selectedTab: AppTab = .map
 
-    init(mapViewModel: MapViewModel, ridesViewModel: RidesViewModel, nfcService: NFCService) {
+    init(mapViewModel: MapViewModel, ridesViewModel: RidesViewModel) {
         _mapViewModel = StateObject(wrappedValue: mapViewModel)
         _ridesViewModel = StateObject(wrappedValue: ridesViewModel)
-        _nfcService = StateObject(wrappedValue: nfcService)
     }
 
     var body: some View {
@@ -48,8 +46,7 @@ struct ContentView: View {
 
             SettingsView(
                 ridesViewModel: ridesViewModel,
-                mapViewModel: mapViewModel,
-                nfcService: nfcService
+                mapViewModel: mapViewModel
             )
             .tabItem {
                 Label(LocalizedStringKey("settings_tab_title"), systemImage: "gear")
@@ -57,11 +54,9 @@ struct ContentView: View {
             .tag(AppTab.settings)
         }
         .onOpenURL { url in
-            nfcService.handleOpenURL(url)
-        }
-        .onChange(of: nfcService.latestActivation) { _, activation in
-            guard let activation else { return }
-            handleNFCTag(activation.tag)
+            guard url.scheme?.lowercased() == "mybiketracker",
+                  url.host?.lowercased() == "tracker" else { return }
+            selectedTab = .trip
         }
         .fullScreenCover(isPresented: $mapViewModel.isEndRideConfirmationPresented) {
             EndRideConfirmationView(
@@ -69,29 +64,6 @@ struct ContentView: View {
                 onConfirm: { mapViewModel.confirmStopTracking() },
                 onCancel: { mapViewModel.cancelStopTracking() }
             )
-        }
-    }
-
-    private func handleNFCTag(_ tag: NFCTagRecord) {
-        switch tag.action {
-        case .toggleRide:
-            if mapViewModel.isRideInProgress {
-                selectedTab = .trip
-                mapViewModel.requestStopTracking()
-            } else {
-                mapViewModel.startTracking()
-                selectedTab = .trip
-            }
-        case .startRide:
-            if !mapViewModel.isRideInProgress {
-                mapViewModel.startTracking()
-                selectedTab = .trip
-            }
-        case .stopRide:
-            if mapViewModel.isRideInProgress {
-                selectedTab = .trip
-                mapViewModel.requestStopTracking()
-            }
         }
     }
 }

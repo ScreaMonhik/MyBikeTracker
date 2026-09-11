@@ -35,7 +35,6 @@ iOS app for recording bicycle rides: GPS track, stats, history, and a garage for
 ### Sensors and shortcuts
 - Bluetooth heart-rate monitors (standard HR service)
 - Bluetooth cadence / speed sensors (CSC), with wheel circumference in Settings
-- NFC tags that start, stop, or toggle a ride (`mybiketracker://nfc/…`)
 - Save finished rides to Apple Health (cycling workout + route)
 
 ### Widgets and Watch
@@ -50,7 +49,6 @@ iOS app for recording bicycle rides: GPS track, stats, history, and a garage for
 - Auto-pause speed and delay
 - Any color for the live track and for the default history lines
 - HealthKit on/off
-- NFC tag list and programming
 
 UI language follows the device: **English**, **Russian**, and **Ukrainian**.
 
@@ -69,7 +67,7 @@ Shared App Group: `group.com.sunko.mybiketracker`.
 - Xcode 16 or later (the project is built against the current iOS SDK; Liquid Glass is used on iOS 26+ and falls back to material chrome on earlier versions)
 - iOS **17.6+** for the app
 - watchOS **10.6+** for the Watch app
-- Apple Developer team and a physical device for GPS, NFC, Bluetooth, and HealthKit
+- Apple Developer team and a physical device for GPS, Bluetooth, and HealthKit
 - The same App Group enabled on the app and the widget extension
 
 ## Getting started
@@ -88,7 +86,7 @@ Shared App Group: `group.com.sunko.mybiketracker`.
 
 Without a Mapbox token the app still records and stores rides. Matching simply does not run.
 
-DEBUG builds add a **Developer** section in Settings: simulated moving/paused rides, a fake NFC tap, and sample rides for History and Calendar.
+DEBUG builds add a **Developer** section in Settings: simulated moving/paused rides and sample rides for History and Calendar.
 
 ## Permissions
 
@@ -96,7 +94,6 @@ The app asks for:
 
 - Location (When In Use + Always) — map and background tracking
 - Bluetooth — heart-rate and cycling sensors
-- NFC — start / stop rides from a tag
 - HealthKit — write cycling workouts and routes
 - Camera / Photo Library — day-journal photos
 
@@ -106,8 +103,8 @@ The app asks for:
 MyBikeTracker/                 iOS app
   Models/                      SwiftData: Ride, Bike, DayJournal
   ViewModels/                  MapViewModel, RidesViewModel
-  Views/                       tabs, settings, garage, calendar, NFC
-  Services/                    location, HealthKit, Mapbox, BLE, NFC, widgets
+  Views/                       tabs, settings, garage, calendar
+  Services/                    location, HealthKit, Mapbox, BLE, widgets
   Extensions/                  units, colors, elevation, preferences
 BikeTrackerWidget/             Home Screen widgets + Live Activity
 BikeTrackerWatch/              watchOS UI + WatchConnectivity session
