@@ -14,12 +14,13 @@ class MapboxRouteService {
     /// Максимальное количество точек, допустимое Mapbox Map Matching API
     private let maxCoordinates = 100
 
+    var isConfigured: Bool { !accessToken.isEmpty }
+
     private var accessToken: String {
-        guard let token = Bundle.main.object(forInfoDictionaryKey: "MAPBOX_ACCESS_TOKEN") as? String else {
-            return ""
-        }
-        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Unsubstituted $(MAPBOX_ACCESS_TOKEN) from Info.plist is not a usable key.
+        let raw = Bundle.main.object(forInfoDictionaryKey: "MAPBOX_ACCESS_TOKEN") as? String
+            ?? Bundle.main.infoDictionary?["MAPBOX_ACCESS_TOKEN"] as? String
+            ?? ""
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty || trimmed.hasPrefix("$(") {
             return ""
         }

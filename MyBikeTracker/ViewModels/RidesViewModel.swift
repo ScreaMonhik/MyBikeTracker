@@ -95,6 +95,13 @@ final class RidesViewModel: ObservableObject {
         WidgetDataService.shared.sync(rides: rides)
     }
 
+    func applyMatchedRoute(_ ride: Ride, coordinates: [CLLocationCoordinate2D]) {
+        guard !coordinates.isEmpty else { return }
+        ride.matchedRoute = coordinates.map { Ride.Coordinate($0) }
+        save()
+        WidgetDataService.shared.sync(rides: rides)
+    }
+
     func deleteRide(at offsets: IndexSet) {
         let removed = offsets.sorted(by: >).map { rides.remove(at: $0) }
         for ride in removed {

@@ -476,6 +476,20 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         resetLiveRideState()
         pushWatchState()
 
+        // Save GPS immediately so a missing Mapbox token cannot drop the ride.
+        let ride = persistRide(
+            locations: locations,
+            start: start,
+            end: end,
+            duration: duration,
+            distance: distance,
+            averageSpeed: avg,
+            maxSpeed: maxSp,
+            elevationGain: elevation,
+            bikeId: bikeUUID,
+            matched: []
+        )
+
         Task {
             let matched = await Self.assembleMatchedRoute(
                 locations: locations,
@@ -483,18 +497,9 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
                 knownFills: recoveredFills
             )
             await MainActor.run {
-                persistRide(
-                    locations: locations,
-                    start: start,
-                    end: end,
-                    duration: duration,
-                    distance: distance,
-                    averageSpeed: avg,
-                    maxSpeed: maxSp,
-                    elevationGain: elevation,
-                    bikeId: bikeUUID,
-                    matched: matched
-                )
+                if let ride, !matched.isEmpty {
+                    ridesViewModel?.applyMatchedRoute(ride, coordinates: matched)
+                }
             }
         }
     }
@@ -655,8 +660,9 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         guard !gpsSegments.isEmpty else { return [] }
 
         var pieces: [[CLLocationCoordinate2D]] = []
+        let useMapbox = mapboxService.isConfigured
         for segment in gpsSegments {
-            let matched = await mapboxService.matchRoute(locations: segment)
+            let matched = useMapbox ? await mapboxService.matchRoute(locations: segment) : []
             if matched.count >= 2 {
                 pieces.append(matched)
             } else {
@@ -695,6 +701,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
     // MARK: - Сохранение поездки
 
+    @discardableResult
     private func persistRide(
         locations: [CLLocation],
         start: Date?,
@@ -706,8 +713,8 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         elevationGain: Double,
         bikeId: UUID?,
         matched: [CLLocationCoordinate2D]
-    ) {
-        guard let start else { return }
+    ) -> Ride? {
+        guard let start else { return nil }
 
         let ride = Ride(
             locations: locations,
@@ -736,6 +743,8 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
                 try? await hk.saveWorkout(ride: ride, locations: locations)
             }
         }
+
+        return ride
     }
 
     private func resetLiveRideState() {
