@@ -24,10 +24,10 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     @Published var cameraPosition: MapCameraPosition = .automatic
 
     /// Точки текущего маршрута
-    @Published var route: [RoutePoint] = []
+    @Published var routeCoordinates: [CLLocationCoordinate2D] = []
 
-    /// Отладочный лог (для внутреннего использования)
-    @Published var debugLog: String = ""
+    /// Live track split at GPS / network gaps, plus road fills when they recover.
+    @Published var routeSegments: [[CLLocationCoordinate2D]] = []
 
     /// Время начала трекинга
     @Published var startTime: Date?
@@ -53,8 +53,8 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     /// Пройденное расстояние в метрах
     @Published var traveledDistance: Double = 0
 
-    /// Уникальные названия улиц, которые пользователь посетил
-    @Published var visitedStreetNames: Set<String> = []
+    /// Набор высоты за текущую поездку, метры
+    @Published var elevationGain: Double = 0
 
     /// Скорректированный маршрут после «мачинга» с помощью Mapbox
     @Published var matchedRoute: [CLLocationCoordinate2D] = []
@@ -64,6 +64,13 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
     /// Трекинг активен/неактивен
     @Published var isTrackingActive: Bool = false
+
+    /// Полноэкранное подтверждение завершения поездки (кнопка Стоп или NFC)
+    @Published var isEndRideConfirmationPresented = false
+
+    var isRideInProgress: Bool {
+        isTrackingActive || startTime != nil
+    }
 
     /// Флаг программного изменения региона карты (чтобы отличать от ручных изменений пользователя)
     @Published var isProgrammaticRegionChange = false
@@ -108,7 +115,15 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     var healthKitService: HealthKitService?
 
     /// Включена ли синхронизация с Apple Health (из Settings)
-    @AppStorage("healthkit_enabled") private var healthKitEnabled: Bool = true
+    @AppStorage(PreferenceKey.healthKitEnabled) private var healthKitEnabled: Bool = true
+
+    @AppStorage(PreferenceKey.autoPauseSpeedKmh) private var autoPauseSpeedKmh: Double = 1.0
+    @AppStorage(PreferenceKey.autoPauseDelaySeconds) private var autoPauseDelaySeconds: Double = 5.0
+    @AppStorage(PreferenceKey.selectedBikeId) var selectedBikeId: String = ""
+
+    let sensorService = BluetoothSensorService()
+    let sessionBridge = RideSessionBridge()
+    private let mapboxService = MapboxRouteService()
 
     // MARK: - Внутренние переменные
 
@@ -124,8 +139,19 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     /// Время, когда скорость впервые стала ниже порога авто-паузы
     private var lowSpeedStartTime: Date?
 
-    /// Время последнего поиска улицы для оптимизации запросов
-    private var lastStreetSearchTime: Date?
+    /// Сколько точек уже учтено в `traveledDistance`
+    private var lastDistanceCount: Int = 0
+
+    /// Последние значения, отправленные в Live Activity — чтобы не слать дубликаты
+    private var lastLiveActivitySignature: (elapsed: Int, speed: Int, distance: Int, paused: Bool)?
+
+    private var gapFills: [String: [CLLocationCoordinate2D]] = [:]
+    private var fillingGapKeys = Set<String>()
+
+    #if DEBUG
+    @Published var isDeveloperSimulationActive = false
+    private var currentRideIsSimulated = false
+    #endif
 
     // MARK: - Инициализация
 
@@ -153,6 +179,8 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         searchCompleter.delegate = self
         searchCompleter.resultTypes = [.address, .pointOfInterest]
 
+        sessionBridge.mapViewModel = self
+        sessionBridge.activate()
         bindLocationUpdates()
     }
 
@@ -169,13 +197,45 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             }
             .store(in: &cancellables)
 
-        // Обновляем маршрут для отображения на карте
         locationService.$recordedLocations
             .receive(on: DispatchQueue.main)
             .sink { [weak self] locations in
-                self?.route = locations.map { RoutePoint(coordinate: $0.coordinate) }
+                self?.updateLiveTrack(from: locations)
             }
             .store(in: &cancellables)
+    }
+
+    private func updateLiveTrack(from locations: [CLLocation]) {
+        routeCoordinates = locations.map(\.coordinate)
+        let gpsSegments = RideTrackGeometry.segments(from: locations)
+        requestGapFills(for: gpsSegments)
+        routeSegments = RideTrackGeometry.stitchedDisplay(gpsSegments: gpsSegments, fills: gapFills)
+    }
+
+    private func requestGapFills(for segments: [[CLLocation]]) {
+        guard segments.count >= 2 else { return }
+        for index in 1..<segments.count {
+            guard let start = segments[index - 1].last, let end = segments[index].first else { continue }
+            let key = RideTrackGeometry.gapKey(from: start, to: end)
+            guard gapFills[key] == nil, !fillingGapKeys.contains(key) else { continue }
+            let jump = end.distance(from: start)
+            guard jump <= RideTrackGeometry.maxFillDistance else { continue }
+
+            fillingGapKeys.insert(key)
+            Task { [weak self] in
+                let path = await RoadPathService.routeOnRoads(from: start.coordinate, to: end.coordinate)
+                guard let self else { return }
+                self.fillingGapKeys.remove(key)
+                guard path.count >= 2 else { return }
+                self.gapFills[key] = path
+                let latest = self.locationService.recordedLocations
+                self.routeSegments = RideTrackGeometry.stitchedDisplay(
+                    gpsSegments: RideTrackGeometry.segments(from: latest),
+                    fills: self.gapFills
+                )
+                self.calculateTraveledDistance()
+            }
+        }
     }
 
     /// Обработка обновления текущей локации
@@ -183,7 +243,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         // Авто-возобновление (если находимся в авто-паузе и начали двигаться)
         if isTrackingActive && isPaused && isAutoPaused {
             let speedKmh = max(0, location.speed) * 3.6
-            if speedKmh >= 1.0 {
+            if speedKmh >= autoPauseSpeedKmh {
                 resumeTracking(auto: true)
             }
         }
@@ -206,10 +266,6 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             updateCameraRegion(to: region)
         }
 
-        // Периодически определяем название ближайшей улицы
-        detectNearbyStreet(from: location)
-
-        // Проверяем необходимость перестроения маршрута
         checkRerouting(currentLocation: location)
     }
 
@@ -243,27 +299,6 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         cameraPosition = .region(region)
         currentRegion = region
         shouldAutoCenter = false
-    }
-
-    // MARK: - Поиск ближайшей улицы
-
-    /// Периодически (не чаще чем раз в 5 секунд) ищет ближайшую улицу и сохраняет её в набор посещённых
-    private func detectNearbyStreet(from location: CLLocation) {
-        let now = Date()
-        if let lastTime = lastStreetSearchTime, now.timeIntervalSince(lastTime) < 5 {
-            return
-        }
-        lastStreetSearchTime = now
-
-        let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-            guard let self = self,
-                  error == nil,
-                  let street = placemarks?.first?.thoroughfare else { return }
-            DispatchQueue.main.async {
-                self.visitedStreetNames.insert(street)
-            }
-        }
     }
 
     // MARK: - Navigation / Routing Logic
@@ -335,16 +370,20 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     private func distanceToPolyline(coordinate: CLLocationCoordinate2D, polyline: MKPolyline) -> CLLocationDistance {
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         var minDistance: CLLocationDistance = .greatestFiniteMagnitude
-        
+
         let pointCount = polyline.pointCount
+        guard pointCount > 0 else { return minDistance }
+
         let points = polyline.points()
-        for i in 0..<pointCount {
-            let ptCoordinate = points[i].coordinate
-            let ptLocation = CLLocation(latitude: ptCoordinate.latitude, longitude: ptCoordinate.longitude)
-            let distance = location.distance(from: ptLocation)
+        let step = max(1, pointCount / 80)
+        var index = 0
+        while index < pointCount {
+            let ptCoordinate = points[index].coordinate
+            let distance = location.distance(from: CLLocation(latitude: ptCoordinate.latitude, longitude: ptCoordinate.longitude))
             if distance < minDistance {
                 minDistance = distance
             }
+            index += step
         }
         return minDistance
     }
@@ -353,17 +392,26 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
     /// Запускает трекинг: инициализация времени, сброс пауз и запуск сервисов
     func startTracking() {
+        guard !isRideInProgress else { return }
+        #if DEBUG
+        if !isDeveloperSimulationActive {
+            currentRideIsSimulated = false
+        }
+        #endif
         isTrackingActive = true
-        debugLog += "Start tracking...\n"
 
         startTime = Date()
         totalPausedTime = 0
         pauseStartTime = nil
         lowSpeedStartTime = nil
+        lastDistanceCount = 0
+        lastLiveActivitySignature = nil
         isPaused = false
         isAutoPaused = false
         shouldAutoCenter = true
         maxSpeed = 0
+        traveledDistance = 0
+        elevationGain = 0
 
         locationService.startTracking()
         startMetrics()
@@ -378,27 +426,82 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             Task { await healthKitService?.requestAuthorization() }
         }
 
-        // Запускаем Live Activity
         liveActivityService?.start(startDate: startTime ?? Date())
+        pushWatchState()
+    }
+
+    func requestStopTracking() {
+        guard isRideInProgress else { return }
+        isEndRideConfirmationPresented = true
+    }
+
+    func confirmStopTracking() {
+        isEndRideConfirmationPresented = false
+        stopTracking()
+    }
+
+    func cancelStopTracking() {
+        isEndRideConfirmationPresented = false
     }
 
     /// Останавливает трекинг и сохраняет поездку
     func stopTracking() {
         isTrackingActive = false
-        debugLog += "Stop tracking\n"
+        isEndRideConfirmationPresented = false
+
+        #if DEBUG
+        locationService.stopRideSimulation()
+        isDeveloperSimulationActive = false
+        #endif
 
         locationService.stopTracking()
         stopMetrics()
 
-        matchedRoute = locationService.recordedLocations.map { $0.coordinate }
+        let locations = locationService.recordedLocations
+        let start = startTime
+        let end = Date()
+        let duration = elapsedTime
+        let distance = traveledDistance
+        let avg = averageSpeed
+        let maxSp = maxSpeed
+        let elevation = ElevationCalculator.gain(from: locations)
+        let bikeUUID = UUID(uuidString: selectedBikeId)
+        let recoveredFills = gapFills
 
-        // Останавливаем Live Activity перед сохранением
         let finalElapsed = elapsedTime
         let finalSpeed = currentSpeed
         let finalDistance = traveledDistance
         Task { await liveActivityService?.stop(elapsed: finalElapsed, speed: finalSpeed, distance: finalDistance) }
 
-        saveCurrentRide()
+        resetLiveRideState()
+        pushWatchState()
+
+        // Save GPS immediately so a missing Mapbox token cannot drop the ride.
+        let ride = persistRide(
+            locations: locations,
+            start: start,
+            end: end,
+            duration: duration,
+            distance: distance,
+            averageSpeed: avg,
+            maxSpeed: maxSp,
+            elevationGain: elevation,
+            bikeId: bikeUUID,
+            matched: []
+        )
+
+        Task {
+            let matched = await Self.assembleMatchedRoute(
+                locations: locations,
+                mapboxService: mapboxService,
+                knownFills: recoveredFills
+            )
+            await MainActor.run {
+                if let ride, !matched.isEmpty {
+                    ridesViewModel?.applyMatchedRoute(ride, coordinates: matched)
+                }
+            }
+        }
     }
 
     /// Пауза трекинга
@@ -407,10 +510,13 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         isPaused = true
         isAutoPaused = auto
         pauseStartTime = Date()
-        debugLog += auto ? "Auto-pause tracking\n" : "Pause tracking\n"
         locationService.pauseTracking()
+        #if DEBUG
+        locationService.pauseRideSimulationClock()
+        #endif
         stopMetrics()
         Task { await liveActivityService?.update(elapsed: elapsedTime, speed: 0, distance: traveledDistance, isPaused: true) }
+        pushWatchState()
     }
 
     /// Возобновление трекинга
@@ -425,18 +531,26 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             totalPausedTime += Date().timeIntervalSince(pauseStart)
         }
         pauseStartTime = nil
-        debugLog += auto ? "Auto-resume tracking\n" : "Resume tracking\n"
         locationService.resumeTracking()
+        #if DEBUG
+        locationService.resumeRideSimulationClock()
+        #endif
         startMetrics()
         Task { await liveActivityService?.update(elapsed: elapsedTime, speed: currentSpeed, distance: traveledDistance, isPaused: false) }
+        pushWatchState()
     }
 
     // MARK: - Подсчёт скорости и времени
 
     private func startMetrics() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.updateMetrics()
+        stopMetrics()
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.updateMetrics()
+            }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     private func stopMetrics() {
@@ -463,11 +577,17 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         }
 
         // Авто-пауза, если скорость меньше 1 км/ч дольше 5 секунд
-        if isTrackingActive && !isPaused {
-            if currentSpeed < 1.0 {
+        #if DEBUG
+        let skipAutoPause = locationService.isSimulatingRide
+        #else
+        let skipAutoPause = false
+        #endif
+        if isTrackingActive && !isPaused && !skipAutoPause {
+            if currentSpeed < autoPauseSpeedKmh {
                 if lowSpeedStartTime == nil {
                     lowSpeedStartTime = now
-                } else if let lowSpeedTime = lowSpeedStartTime, now.timeIntervalSince(lowSpeedTime) >= 5.0 {
+                } else if let lowSpeedTime = lowSpeedStartTime,
+                          now.timeIntervalSince(lowSpeedTime) >= autoPauseDelaySeconds {
                     pauseTracking(auto: true)
                     lowSpeedStartTime = nil
                 }
@@ -476,7 +596,9 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             }
         }
 
-        // Средняя скорость — расстояние / время в часах
+        calculateTraveledDistance()
+        elevationGain = ElevationCalculator.gain(from: locationService.recordedLocations)
+
         let elapsedHours = elapsedTime / 3600
         if elapsedHours > 0 {
             averageSpeed = (traveledDistance / 1000) / elapsedHours
@@ -484,10 +606,20 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             averageSpeed = 0
         }
 
-        // Расчёт пройденного расстояния
-        calculateTraveledDistance()
+        pushLiveActivityIfNeeded()
+        pushWatchState()
+    }
 
-        // Обновляем Live Activity каждую секунду
+    private func pushLiveActivityIfNeeded() {
+        let signature = (
+            elapsed: Int(elapsedTime),
+            speed: Int(currentSpeed * 10),
+            distance: Int(traveledDistance),
+            paused: isPaused
+        )
+        guard lastLiveActivitySignature == nil || lastLiveActivitySignature! != signature else { return }
+        lastLiveActivitySignature = signature
+
         let elapsed = elapsedTime
         let speed = currentSpeed
         let distance = traveledDistance
@@ -499,59 +631,259 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         let locations = locationService.recordedLocations
         guard locations.count > 1 else {
             traveledDistance = 0
+            lastDistanceCount = locations.count
             return
         }
 
-        var distance: Double = 0
-        for i in 1..<locations.count {
-            distance += locations[i].distance(from: locations[i - 1])
+        let gpsSegments = RideTrackGeometry.segments(from: locations)
+        var distance = gpsSegments.reduce(0.0) { $0 + RideTrackGeometry.polylineDistance($1) }
+        for index in 1..<gpsSegments.count {
+            guard let start = gpsSegments[index - 1].last, let end = gpsSegments[index].first else { continue }
+            let key = RideTrackGeometry.gapKey(from: start, to: end)
+            guard let fill = gapFills[key] else { continue }
+            let road = RideTrackGeometry.polylineDistance(fill)
+            let duration = end.timestamp.timeIntervalSince(start.timestamp)
+            if RideTrackGeometry.isPlausibleFill(distance: road, duration: duration) {
+                distance += road
+            }
+        }
+        traveledDistance = distance
+        lastDistanceCount = locations.count
+    }
+
+    private static func assembleMatchedRoute(
+        locations: [CLLocation],
+        mapboxService: MapboxRouteService,
+        knownFills: [String: [CLLocationCoordinate2D]]
+    ) async -> [CLLocationCoordinate2D] {
+        let gpsSegments = RideTrackGeometry.segments(from: locations)
+        guard !gpsSegments.isEmpty else { return [] }
+
+        var pieces: [[CLLocationCoordinate2D]] = []
+        let useMapbox = mapboxService.isConfigured
+        for segment in gpsSegments {
+            let matched = useMapbox ? await mapboxService.matchRoute(locations: segment) : []
+            if matched.count >= 2 {
+                pieces.append(matched)
+            } else {
+                pieces.append(segment.map(\.coordinate))
+            }
         }
 
-        traveledDistance = distance
+        var assembled: [CLLocationCoordinate2D] = []
+        for index in 0..<pieces.count {
+            let piece = pieces[index]
+            guard piece.count >= 2 else { continue }
+            if assembled.isEmpty {
+                assembled.append(contentsOf: piece)
+                continue
+            }
+            if let last = assembled.last {
+                let jump = CLLocation(latitude: last.latitude, longitude: last.longitude)
+                    .distance(from: CLLocation(latitude: piece[0].latitude, longitude: piece[0].longitude))
+                if jump > 40 {
+                    var fill = [CLLocationCoordinate2D]()
+                    if let start = gpsSegments[index - 1].last, let end = gpsSegments[index].first {
+                        fill = knownFills[RideTrackGeometry.gapKey(from: start, to: end)] ?? []
+                    }
+                    if fill.count < 2 {
+                        fill = await RoadPathService.routeOnRoads(from: last, to: piece[0])
+                    }
+                    if fill.count >= 2 {
+                        assembled.append(contentsOf: fill.dropFirst())
+                    }
+                }
+            }
+            assembled.append(contentsOf: piece.dropFirst())
+        }
+        return assembled
     }
 
     // MARK: - Сохранение поездки
 
-    private func saveCurrentRide() {
-        guard let start = startTime else { return }
+    @discardableResult
+    private func persistRide(
+        locations: [CLLocation],
+        start: Date?,
+        end: Date,
+        duration: TimeInterval,
+        distance: Double,
+        averageSpeed: Double,
+        maxSpeed: Double,
+        elevationGain: Double,
+        bikeId: UUID?,
+        matched: [CLLocationCoordinate2D]
+    ) -> Ride? {
+        guard let start else { return nil }
 
         let ride = Ride(
-            route: route.map { $0.coordinate },
+            locations: locations,
             startDate: start,
-            endDate: Date(),
-            distance: traveledDistance,
+            endDate: end,
+            distance: distance,
             averageSpeed: averageSpeed,
             maxSpeed: maxSpeed,
-            duration: elapsedTime,
-            matchedRoute: matchedRoute.isEmpty ? nil : matchedRoute
+            duration: duration,
+            matchedRoute: matched.isEmpty ? nil : matched,
+            elevationGain: elevationGain,
+            bikeId: bikeId
         )
 
         ridesViewModel?.addRide(ride)
 
-        debugLog += "Saved ride: \(ride.startDate)\n"
+        #if DEBUG
+        let skipHealthKit = currentRideIsSimulated
+        currentRideIsSimulated = false
+        #else
+        let skipHealthKit = false
+        #endif
 
-        // Сохраняем тренировку в Apple Health (если включено в настройках)
-        if healthKitEnabled, let hk = healthKitService {
-            let locations = locationService.recordedLocations
+        if healthKitEnabled, !skipHealthKit, let hk = healthKitService {
             Task {
-                do {
-                    try await hk.saveWorkout(ride: ride, locations: locations)
-                } catch {
-                    debugLog += "HealthKit save error: \(error.localizedDescription)\n"
-                }
+                try? await hk.saveWorkout(ride: ride, locations: locations)
             }
         }
 
-        // Очистка для следующей поездки
-        route.removeAll()
+        return ride
+    }
+
+    private func resetLiveRideState() {
+        routeCoordinates.removeAll()
+        routeSegments.removeAll()
+        gapFills.removeAll()
+        fillingGapKeys.removeAll()
         matchedRoute.removeAll()
-        visitedStreetNames.removeAll()
         elapsedTime = 0
         traveledDistance = 0
+        elevationGain = 0
         currentSpeed = 0
         averageSpeed = 0
         maxSpeed = 0
         startTime = nil
+        lastDistanceCount = 0
+        lastLiveActivitySignature = nil
     }
 
+    func makeLocationSharePayload() -> LocationSharePayload? {
+        guard let location = locationService.currentLocation else { return nil }
+        let coordinate = location.coordinate
+        let urlString = String(
+            format: "https://maps.apple.com/?ll=%.6f,%.6f&q=Ride",
+            coordinate.latitude,
+            coordinate.longitude
+        )
+        guard let url = URL(string: urlString) else { return nil }
+        let text = String(
+            format: NSLocalizedString("share_location_message", comment: ""),
+            RideFormatters.distance(meters: traveledDistance),
+            RideFormatters.speed(kmh: currentSpeed),
+            url.absoluteString
+        )
+        return LocationSharePayload(text: text, url: url)
+    }
+
+    private func pushWatchState() {
+        sessionBridge.pushState(
+            tracking: isRideInProgress,
+            paused: isPaused,
+            elapsed: elapsedTime,
+            speed: currentSpeed,
+            distance: traveledDistance
+        )
+    }
+
+    #if DEBUG
+    // MARK: - Developer ride simulation
+
+    /// Starts a live ride that moves around the current (or Kyiv) point at ~20 km/h.
+    func startDeveloperSimulatedRide() {
+        locationService.stopRideSimulation()
+        locationService.armRideSimulation()
+        currentRideIsSimulated = true
+        isDeveloperSimulationActive = true
+        startTracking()
+        locationService.startRideSimulation(
+            around: locationService.currentLocation?.coordinate,
+            startMoving: true
+        )
+        forceAutoCenter()
+    }
+
+    /// Starts a short simulated track and immediately pauses it.
+    func startDeveloperPausedRide() {
+        locationService.stopRideSimulation()
+        locationService.armRideSimulation()
+        currentRideIsSimulated = true
+        isDeveloperSimulationActive = true
+        startTracking()
+        locationService.startRideSimulation(
+            around: locationService.currentLocation?.coordinate,
+            startMoving: false
+        )
+        pauseTracking()
+        forceAutoCenter()
+    }
+
+    func stopDeveloperSimulationKeepingRide() {
+        locationService.stopRideSimulation()
+        isDeveloperSimulationActive = false
+    }
+
+    /// Adds a few dated rides so History and Calendar have something to show.
+    func seedDeveloperSampleRides() {
+        let calendar = Calendar.current
+        let origin = locationService.currentLocation?.coordinate
+            ?? CLLocationCoordinate2D(latitude: 50.4501, longitude: 30.5234)
+        let samples: [(daysAgo: Int, hour: Int, meters: Double, minutes: Double, climb: Double)] = [
+            (0, 9, 8_400, 32, 86),
+            (1, 18, 12_200, 48, 142),
+            (3, 8, 21_500, 75, 310),
+            (9, 11, 6_300, 24, 54)
+        ]
+
+        for sample in samples {
+            guard let day = calendar.date(byAdding: .day, value: -sample.daysAgo, to: Date()) else { continue }
+            var startParts = calendar.dateComponents([.year, .month, .day], from: day)
+            startParts.hour = sample.hour
+            startParts.minute = 15
+            guard let start = calendar.date(from: startParts) else { continue }
+            let end = start.addingTimeInterval(sample.minutes * 60)
+            let route = Self.sampleRoute(from: origin, meters: sample.meters)
+            let hours = sample.minutes / 60
+            let altitudes = route.enumerated().map { index, _ -> Double? in
+                168 + 18 * sin(Double(index) * 0.07)
+            }
+            let ride = Ride(
+                route: route,
+                startDate: start,
+                endDate: end,
+                distance: sample.meters,
+                averageSpeed: hours > 0 ? (sample.meters / 1000) / hours : 0,
+                maxSpeed: 28,
+                duration: sample.minutes * 60,
+                elevationGain: sample.climb,
+                altitudes: altitudes
+            )
+            ridesViewModel?.addRide(ride)
+        }
+    }
+
+    private static func sampleRoute(from origin: CLLocationCoordinate2D, meters: Double) -> [CLLocationCoordinate2D] {
+        let loop = LocationService.makeParkLoop(around: origin, stepMeters: 8)
+        guard !loop.isEmpty else { return [] }
+        var travelled = 0.0
+        var result: [CLLocationCoordinate2D] = [loop[0]]
+        var index = 1
+        while travelled < meters {
+            let prev = result[result.count - 1]
+            let next = loop[index % loop.count]
+            travelled += CLLocation(latitude: prev.latitude, longitude: prev.longitude)
+                .distance(from: CLLocation(latitude: next.latitude, longitude: next.longitude))
+            result.append(next)
+            index += 1
+            if index > loop.count * 8 { break }
+        }
+        return result
+    }
+    #endif
 }

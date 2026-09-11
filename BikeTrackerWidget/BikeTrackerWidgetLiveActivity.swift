@@ -22,9 +22,9 @@ struct BikeTrackerLiveActivity: Widget {
                 // MARK: Dynamic Island – Expanded
                 DynamicIslandExpandedRegion(.leading) {
                     Label {
-                        Text(String(format: "%.1f", context.state.speed))
+                        Text(RideFormatters.speedValue(kmh: context.state.speed))
                             .font(.title2.bold())
-                        Text("km/h")
+                        Text(RideFormatters.speedUnitLabel())
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } icon: {
@@ -35,9 +35,9 @@ struct BikeTrackerLiveActivity: Widget {
 
                 DynamicIslandExpandedRegion(.trailing) {
                     Label {
-                        Text(String(format: "%.2f", context.state.distance / 1000))
+                        Text(RideFormatters.distanceValue(meters: context.state.distance))
                             .font(.title2.bold())
-                        Text("km")
+                        Text(RideFormatters.distanceUnitLabel())
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } icon: {
@@ -69,9 +69,9 @@ struct BikeTrackerLiveActivity: Widget {
 
             } compactTrailing: {
                 // MARK: Dynamic Island – Compact Trailing
-                Text(String(format: "%.0f", context.state.speed))
+                Text(RideFormatters.speedValue(kmh: context.state.speed))
                     .font(.caption.bold().monospacedDigit())
-                + Text(" km/h")
+                + Text(" \(RideFormatters.speedUnitLabel())")
                     .font(.system(size: 9))
 
             } minimal: {
@@ -109,10 +109,10 @@ private struct LockScreenLiveActivityView: View {
 
             // Center – speed (most important metric)
             VStack(spacing: 0) {
-                Text(String(format: "%.1f", context.state.speed))
+                Text(RideFormatters.speedValue(kmh: context.state.speed))
                     .font(.system(size: 36, weight: .bold, design: .rounded).monospacedDigit())
                     .foregroundStyle(.primary)
-                Text("km/h")
+                Text(RideFormatters.speedUnitLabel())
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -128,7 +128,7 @@ private struct LockScreenLiveActivityView: View {
                     Image(systemName: "flag.checkered")
                         .font(.caption)
                         .foregroundStyle(.orange)
-                    Text(String(format: "%.2f km", context.state.distance / 1000))
+                    Text(RideFormatters.distance(meters: context.state.distance))
                         .font(.caption.bold().monospacedDigit())
                 }
                 HStack(spacing: 4) {

@@ -21,6 +21,7 @@ xcuserdata/
 # --- Стандартні папки збірки (про всяк випадок) ---
 build/
 DerivedData/
+.derivedData/
 .build/
 .swiftpm/
 

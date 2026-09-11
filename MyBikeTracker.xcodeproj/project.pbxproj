@@ -10,6 +10,7 @@
 		26CE66E32F5AE90000F95E24 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 26CE66E22F5AE90000F95E24 /* WidgetKit.framework */; };
 		26CE66E52F5AE90000F95E24 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 26CE66E42F5AE90000F95E24 /* SwiftUI.framework */; };
 		26CE66F42F5AE90200F95E24 /* BikeTrackerWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 26CE66E02F5AE90000F95E24 /* BikeTrackerWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		26F101062F6C010100F95E24 /* BikeTrackerWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 26F101012F6C010100F95E24 /* BikeTrackerWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -19,6 +20,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 26CE66DF2F5AE90000F95E24;
 			remoteInfo = BikeTrackerWidgetExtension;
+		};
+		26F101072F6C010100F95E24 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 26C648272DDB010E005E2D00 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 26F101022F6C010100F95E24;
+			remoteInfo = BikeTrackerWatch;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -34,6 +42,17 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		26F101052F6C010100F95E24 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				26F101062F6C010100F95E24 /* BikeTrackerWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +61,8 @@
 		26CE66E22F5AE90000F95E24 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		26CE66E42F5AE90000F95E24 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		26CE66FA2F5AEA6900F95E24 /* BikeTrackerWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BikeTrackerWidgetExtension.entitlements; sourceTree = "<group>"; };
+		26F101012F6C010100F95E24 /* BikeTrackerWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BikeTrackerWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		26F1010C2F6C010100F95E24 /* BikeTrackerWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BikeTrackerWatch/BikeTrackerWatch.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -59,9 +80,18 @@
 			);
 			target = 26CE66DF2F5AE90000F95E24 /* BikeTrackerWidgetExtension */;
 		};
+		26F101042F6C010100F95E24 /* Exceptions for "BikeTrackerWatch" folder in "BikeTrackerWatch" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 26F101022F6C010100F95E24 /* BikeTrackerWatch */;
+		};
 		26CE67002F5AEDB000F95E24 /* Exceptions for "MyBikeTracker" folder in "BikeTrackerWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Extensions/PreferenceKeys.swift,
+				Extensions/UnitFormatting.swift,
 				Models/AppGroupConfig.swift,
 				Models/BikeTrackerAttributes.swift,
 				Models/RideWidgetEntry.swift,
@@ -88,10 +118,25 @@
 			path = BikeTrackerWidget;
 			sourceTree = "<group>";
 		};
+		26F101032F6C010100F95E24 /* BikeTrackerWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				26F101042F6C010100F95E24 /* Exceptions for "BikeTrackerWatch" folder in "BikeTrackerWatch" target */,
+			);
+			path = BikeTrackerWatch;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		26C6482C2DDB010E005E2D00 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		26F1010D2F6C010100F95E24 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -114,8 +159,10 @@
 			isa = PBXGroup;
 			children = (
 				26CE66FA2F5AEA6900F95E24 /* BikeTrackerWidgetExtension.entitlements */,
+				26F1010C2F6C010100F95E24 /* BikeTrackerWatch.entitlements */,
 				26C648312DDB010E005E2D00 /* MyBikeTracker */,
 				26CE66E62F5AE90000F95E24 /* BikeTrackerWidget */,
+				26F101032F6C010100F95E24 /* BikeTrackerWatch */,
 				26CE66E12F5AE90000F95E24 /* Frameworks */,
 				26C648302DDB010E005E2D00 /* Products */,
 			);
@@ -126,6 +173,7 @@
 			children = (
 				26C6482F2DDB010E005E2D00 /* MyBikeTracker.app */,
 				26CE66E02F5AE90000F95E24 /* BikeTrackerWidgetExtension.appex */,
+				26F101012F6C010100F95E24 /* BikeTrackerWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -188,6 +236,28 @@
 			productReference = 26CE66E02F5AE90000F95E24 /* BikeTrackerWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		26F101022F6C010100F95E24 /* BikeTrackerWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 26F1010B2F6C010100F95E24 /* Build configuration list for PBXNativeTarget "BikeTrackerWatch" */;
+			buildPhases = (
+				26F1010E2F6C010100F95E24 /* Sources */,
+				26F1010D2F6C010100F95E24 /* Frameworks */,
+				26F1010F2F6C010100F95E24 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				26F101032F6C010100F95E24 /* BikeTrackerWatch */,
+			);
+			name = BikeTrackerWatch;
+			packageProductDependencies = (
+			);
+			productName = BikeTrackerWatch;
+			productReference = 26F101012F6C010100F95E24 /* BikeTrackerWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -224,12 +294,20 @@
 			targets = (
 				26C6482E2DDB010E005E2D00 /* MyBikeTracker */,
 				26CE66DF2F5AE90000F95E24 /* BikeTrackerWidgetExtension */,
+				26F101022F6C010100F95E24 /* BikeTrackerWatch */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		26C6482D2DDB010E005E2D00 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		26F1010F2F6C010100F95E24 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +331,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		26F1010E2F6C010100F95E24 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		26CE66DC2F5AE90000F95E24 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -267,6 +352,11 @@
 			isa = PBXTargetDependency;
 			target = 26CE66DF2F5AE90000F95E24 /* BikeTrackerWidgetExtension */;
 			targetProxy = 26CE66F22F5AE90200F95E24 /* PBXContainerItemProxy */;
+		};
+		26F101082F6C010100F95E24 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 26F101022F6C010100F95E24 /* BikeTrackerWatch */;
+			targetProxy = 26F101072F6C010100F95E24 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -411,11 +501,16 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MyBikeTracker/Info.plist;
+				INFOPLIST_KEY_NFCReaderUsageDescription = "MyBikeTracker uses NFC tags to start and finish your rides.";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "MyBikeTracker connects to heart rate and cycling sensors.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "MyBikeTracker connects to heart rate and cycling sensors.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "MyBikeTracker adds a photo to the day in History.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "MyBikeTracker reads workout data to display your cycling history in Apple Health.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "MyBikeTracker saves your cycling workouts and routes to Apple Health.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "MyBikeTracker tracks your bike route in the background";
 				INFOPLIST_KEY_NSLocationTemporaryUsageDescriptionDictionary = "";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "MyBikeTracker needs your location to track your bike route";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "MyBikeTracker adds a photo to the day in History.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -448,11 +543,16 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MyBikeTracker/Info.plist;
+				INFOPLIST_KEY_NFCReaderUsageDescription = "MyBikeTracker uses NFC tags to start and finish your rides.";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "MyBikeTracker connects to heart rate and cycling sensors.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "MyBikeTracker connects to heart rate and cycling sensors.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "MyBikeTracker adds a photo to the day in History.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "MyBikeTracker reads workout data to display your cycling history in Apple Health.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "MyBikeTracker saves your cycling workouts and routes to Apple Health.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "MyBikeTracker tracks your bike route in the background";
 				INFOPLIST_KEY_NSLocationTemporaryUsageDescriptionDictionary = "";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "MyBikeTracker needs your location to track your bike route";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "MyBikeTracker adds a photo to the day in History.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -536,6 +636,64 @@
 			};
 			name = Release;
 		};
+		26F101092F6C010100F95E24 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = BikeTrackerWatch/BikeTrackerWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = X63T257KQM;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BikeTrackerWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BikeTracker;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dimsun.MyBikeTracker;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dimsun.MyBikeTracker.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Debug;
+		};
+		26F1010A2F6C010100F95E24 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = BikeTrackerWatch/BikeTrackerWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = X63T257KQM;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BikeTrackerWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BikeTracker;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dimsun.MyBikeTracker;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dimsun.MyBikeTracker.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -562,6 +720,15 @@
 			buildConfigurations = (
 				26CE66F62F5AE90200F95E24 /* Debug */,
 				26CE66F72F5AE90200F95E24 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		26F1010B2F6C010100F95E24 /* Build configuration list for PBXNativeTarget "BikeTrackerWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				26F101092F6C010100F95E24 /* Debug */,
+				26F1010A2F6C010100F95E24 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

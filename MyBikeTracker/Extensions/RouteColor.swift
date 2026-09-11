@@ -6,58 +6,84 @@
 //
 
 import SwiftUI
+import UIKit
 
-/// Набор доступных цветов линии маршрута на карте.
-/// Хранится как String в AppStorage.
-enum RouteColor: String, CaseIterable, Identifiable {
-    case red    = "red"
-    case blue   = "blue"
-    case green  = "green"
-    case orange = "orange"
-    case purple = "purple"
-    case cyan   = "cyan"
-    case yellow = "yellow"
-    case pink   = "pink"
+/// Stored route-line colors: `#RRGGBB`, plus the legacy 8 named presets.
+enum RouteLineColor {
+    static let defaultTrackerHex = "#FF3B30"
+    static let defaultHistoryHex = "#007AFF"
 
-    var id: String { rawValue }
-
-    var label: LocalizedStringKey {
-        switch self {
-        case .red:    return "color_red"
-        case .blue:   return "color_blue"
-        case .green:  return "color_green"
-        case .orange: return "color_orange"
-        case .purple: return "color_purple"
-        case .cyan:   return "color_cyan"
-        case .yellow: return "color_yellow"
-        case .pink:   return "color_pink"
-        }
+    static func color(from stored: String, fallbackHex: String = defaultHistoryHex) -> Color {
+        Color(uiColor: uiColor(from: stored, fallbackHex: fallbackHex))
     }
 
-    var color: Color {
-        switch self {
-        case .red:    return .red
-        case .blue:   return .blue
-        case .green:  return .green
-        case .orange: return .orange
-        case .purple: return .purple
-        case .cyan:   return .cyan
-        case .yellow: return .yellow
-        case .pink:   return .pink
-        }
+    static func uiColor(from stored: String, fallbackHex: String = defaultHistoryHex) -> UIColor {
+        if let parsed = parse(stored) { return parsed }
+        if let parsed = parse(fallbackHex) { return parsed }
+        return .systemBlue
     }
 
-    var uiColor: UIColor {
-        switch self {
-        case .red:    return .systemRed
-        case .blue:   return .systemBlue
-        case .green:  return .systemGreen
-        case .orange: return .systemOrange
-        case .purple: return .systemPurple
-        case .cyan:   return .systemCyan
-        case .yellow: return .systemYellow
-        case .pink:   return .systemPink
+    static func hexString(from color: Color) -> String {
+        hexString(from: UIColor(color))
+    }
+
+    static func hexString(from uiColor: UIColor) -> String {
+        let space = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        guard let converted = uiColor.cgColor.converted(to: space, intent: .defaultIntent, options: nil) else {
+            return defaultHistoryHex
         }
+        let components = converted.components ?? [0, 0, 0]
+        let red = components[0]
+        let green = components.count > 1 ? components[1] : components[0]
+        let blue = components.count > 2 ? components[2] : components[0]
+        return String(format: "#%02X%02X%02X", channel(red), channel(green), channel(blue))
+    }
+
+    private static func parse(_ stored: String) -> UIColor? {
+        let trimmed = stored.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let legacy = legacyPalette[trimmed.lowercased()] {
+            return legacy
+        }
+        return parseHex(trimmed)
+    }
+
+    private static func parseHex(_ raw: String) -> UIColor? {
+        var hex = raw
+        if hex.hasPrefix("#") { hex.removeFirst() }
+        guard hex.count == 6 || hex.count == 8,
+              let value = UInt64(hex, radix: 16) else { return nil }
+
+        let hasAlpha = hex.count == 8
+        let shift = hasAlpha ? 8 : 0
+        let red = CGFloat((value >> (16 + shift)) & 0xFF) / 255
+        let green = CGFloat((value >> (8 + shift)) & 0xFF) / 255
+        let blue = CGFloat((value >> shift) & 0xFF) / 255
+        return UIColor(red: red, green: green, blue: blue, alpha: 1)
+    }
+
+    private static func channel(_ value: CGFloat) -> Int {
+        Int((max(0, min(1, value)) * 255).rounded())
+    }
+
+    private static let legacyPalette: [String: UIColor] = [
+        "red": .systemRed,
+        "blue": .systemBlue,
+        "green": .systemGreen,
+        "orange": .systemOrange,
+        "purple": .systemPurple,
+        "cyan": .systemCyan,
+        "yellow": .systemYellow,
+        "pink": .systemPink
+    ]
+}
+
+extension Ride {
+    func resolvedLineUIColor(defaultHex: String) -> UIColor {
+        RouteLineColor.uiColor(from: lineColorHex ?? defaultHex, fallbackHex: defaultHex)
+    }
+
+    func resolvedLineColor(defaultHex: String) -> Color {
+        Color(uiColor: resolvedLineUIColor(defaultHex: defaultHex))
     }
 }
 

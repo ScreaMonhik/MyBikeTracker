@@ -16,12 +16,16 @@ struct RideExportDTO: Codable, Identifiable {
     var distance: Double
     var averageSpeed: Double
     var maxSpeed: Double
+    var elevationGain: Double?
+    var bikeId: UUID?
+    var lineColorHex: String?
     var route: [RouteCoordinate]
     var matchedRoute: [RouteCoordinate]?
 
     struct RouteCoordinate: Codable {
         var latitude: Double
         var longitude: Double
+        var altitude: Double?
     }
 }
 
@@ -37,7 +41,14 @@ extension RideExportDTO {
         self.distance = ride.distance
         self.averageSpeed = ride.averageSpeed
         self.maxSpeed = ride.maxSpeed
-        self.route = ride.route.map { RouteCoordinate(latitude: $0.latitude, longitude: $0.longitude) }
-        self.matchedRoute = ride.matchedRoute?.map { RouteCoordinate(latitude: $0.latitude, longitude: $0.longitude) }
+        self.elevationGain = ride.elevationGain
+        self.bikeId = ride.bikeId
+        self.lineColorHex = ride.lineColorHex
+        self.route = ride.route.map {
+            RouteCoordinate(latitude: $0.latitude, longitude: $0.longitude, altitude: $0.altitude)
+        }
+        self.matchedRoute = ride.matchedRoute?.map {
+            RouteCoordinate(latitude: $0.latitude, longitude: $0.longitude, altitude: $0.altitude)
+        }
     }
 }

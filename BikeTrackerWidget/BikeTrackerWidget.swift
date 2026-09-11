@@ -98,21 +98,21 @@ struct SmallWidgetView: View {
             }
 
             // Big km number
-            Text(formattedKm)
+            Text(yearlyValue)
                 .font(.system(size: 40, weight: .black, design: .rounded).monospacedDigit())
                 .foregroundStyle(.primary)
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
 
-            Text("km")
+            Text(RideFormatters.distanceUnitLabel())
                 .font(.headline.bold())
                 .foregroundStyle(.green)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var formattedKm: String {
-        String(format: "%.1f", entry.yearlyKm)
+    private var yearlyValue: String {
+        RideFormatters.yearlyDistanceValue(kilometers: entry.yearlyKm)
     }
 
     private var yearString: String {
@@ -178,13 +178,13 @@ struct MediumWidgetView: View {
 
                 Spacer()
 
-                Text(String(format: "%.1f", entry.yearlyKm))
+                Text(RideFormatters.yearlyDistanceValue(kilometers: entry.yearlyKm))
                     .font(.system(size: 36, weight: .black, design: .rounded).monospacedDigit())
                     .foregroundStyle(.primary)
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
 
-                Text("km this year")
+                Text(LocalizedStringKey(UnitPreferences.current == .imperial ? "mi this year" : "km this year"))
                     .font(.caption.bold())
                     .foregroundStyle(.green)
 

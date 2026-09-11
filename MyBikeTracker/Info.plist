@@ -10,5 +10,20 @@
 	</array>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>NFCReaderUsageDescription</key>
+	<string>MyBikeTracker uses NFC tags to start and finish your rides.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>dimsun.MyBikeTracker.nfc</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>mybiketracker</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

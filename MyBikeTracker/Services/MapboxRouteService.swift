@@ -14,17 +14,38 @@ class MapboxRouteService {
     /// Максимальное количество точек, допустимое Mapbox Map Matching API
     private let maxCoordinates = 100
 
+    var isConfigured: Bool { !accessToken.isEmpty }
+
     private var accessToken: String {
-        guard let token = Bundle.main.object(forInfoDictionaryKey: "MAPBOX_ACCESS_TOKEN") as? String,
-              !token.isEmpty else {
-            assertionFailure("MAPBOX_ACCESS_TOKEN не задан в Info.plist")
+        let raw = Bundle.main.object(forInfoDictionaryKey: "MAPBOX_ACCESS_TOKEN") as? String
+            ?? Bundle.main.infoDictionary?["MAPBOX_ACCESS_TOKEN"] as? String
+            ?? ""
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed.hasPrefix("$(") {
             return ""
         }
-        return token
+        return trimmed
+    }
+
+    func matchRoute(locations: [CLLocation]) async -> [CLLocationCoordinate2D] {
+        await withCheckedContinuation { continuation in
+            matchRoute(locations: locations) { result in
+                switch result {
+                case .success(let coords):
+                    continuation.resume(returning: coords)
+                case .failure:
+                    continuation.resume(returning: [])
+                }
+            }
+        }
     }
 
     func matchRoute(locations: [CLLocation], completion: @escaping (Result<[CLLocationCoordinate2D], Error>) -> Void) {
         guard !locations.isEmpty else {
+            completion(.success([]))
+            return
+        }
+        guard !accessToken.isEmpty else {
             completion(.success([]))
             return
         }

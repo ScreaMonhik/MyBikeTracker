@@ -26,7 +26,6 @@ struct MapHelpers {
         case ..<0.002: return 30
         case ..<0.003: return 25
         case ..<0.005: return 20
-        case ..<0.001: return 15
         case ..<0.008: return 10
         case ..<0.02: return 5
         case ..<0.1: return 2.5

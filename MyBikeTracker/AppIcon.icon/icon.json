@@ -1,0 +1,105 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "srgb:0.03922,0.51765,1.00000,1.00000",
+      "srgb:0.00000,0.22745,0.56078,1.00000"
+    ],
+    "orientation" : {
+      "start" : { "x" : 0.18, "y" : 0.08 },
+      "stop" : { "x" : 0.86, "y" : 0.94 }
+    }
+  },
+  "fill-specializations" : [
+    {
+      "appearance" : "dark",
+      "value" : {
+        "linear-gradient" : [
+          "srgb:0.00784,0.07843,0.15686,1.00000",
+          "srgb:0.00000,0.03137,0.06275,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance" : "tinted",
+      "value" : {
+        "solid" : "srgb:0.17255,0.17255,0.18039,1.00000"
+      }
+    }
+  ],
+  "groups" : [
+    {
+      "name" : "Route",
+      "blur-material" : 0.08,
+      "lighting" : "combined",
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.35
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.35
+      },
+      "layers" : [
+        {
+          "name" : "Trail",
+          "image-name" : "Route.svg",
+          "glass" : true,
+          "hidden" : false,
+          "opacity" : 1,
+          "fill" : {
+            "solid" : "srgb:1.00000,0.23137,0.18824,1.00000"
+          },
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "extended-gray:1.00000,1.00000"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name" : "Bike",
+      "blur-material" : 0.12,
+      "lighting" : "combined",
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.45
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.55
+      },
+      "layers" : [
+        {
+          "name" : "Bicycle",
+          "image-name" : "Bicycle.svg",
+          "glass" : true,
+          "hidden" : false,
+          "opacity" : 1,
+          "fill" : {
+            "automatic-gradient" : "extended-gray:1.00000,1.00000"
+          },
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "extended-gray:1.00000,1.00000"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

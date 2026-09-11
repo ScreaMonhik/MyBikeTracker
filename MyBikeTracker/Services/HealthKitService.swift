@@ -44,6 +44,14 @@ final class HealthKitService {
         let distanceQuantity = HKQuantity(unit: .meter(), doubleValue: ride.distance)
         let energyQuantity = estimatedCalories(distanceMeters: ride.distance)
 
+        var metadata: [String: Any] = [:]
+        if ride.elevationGain > 0 {
+            metadata[HKMetadataKeyElevationAscended] = HKQuantity(
+                unit: .meter(),
+                doubleValue: ride.elevationGain
+            )
+        }
+
         let workout = HKWorkout(
             activityType: .cycling,
             start: ride.startDate,
@@ -51,7 +59,7 @@ final class HealthKitService {
             duration: ride.duration,
             totalEnergyBurned: energyQuantity,
             totalDistance: distanceQuantity,
-            metadata: nil
+            metadata: metadata.isEmpty ? nil : metadata
         )
 
         // 2. Save the workout object
