@@ -24,7 +24,7 @@ struct DayJournalSection: View {
                     .scaledToFill()
                     .frame(maxHeight: 220)
                     .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous))
 
                 Button(role: .destructive) {
                     ridesViewModel.setPhoto(nil, for: date)

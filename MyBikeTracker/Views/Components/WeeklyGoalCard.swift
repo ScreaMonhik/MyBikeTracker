@@ -6,6 +6,8 @@ struct WeeklyGoalCard: View {
     @AppStorage(PreferenceKey.weeklyGoalKilometers) private var goalKilometers = 50.0
     @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
     @State private var showGoalEditor = false
+    @State private var animatedProgress: Double = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var goalMeters: Double { goalKilometers * 1000 }
 
@@ -15,55 +17,78 @@ struct WeeklyGoalCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 16) {
-            Button {
-                showGoalEditor = true
-            } label: {
-                ZStack {
-                    Circle()
-                        .stroke(Color.secondary.opacity(0.18), lineWidth: 8)
-                    Circle()
-                        .trim(from: 0, to: progress)
-                        .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    VStack(spacing: 2) {
-                        Text(RideFormatters.distanceValue(meters: thisWeek.distance))
-                            .font(.headline.monospacedDigit())
-                        Text(RideFormatters.distanceUnitLabel())
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+        BrandCard {
+            HStack(spacing: 16) {
+                Button {
+                    showGoalEditor = true
+                } label: {
+                    ZStack {
+                        Circle()
+                            .stroke(Brand.Color.surfaceMuted, lineWidth: 9)
+                        Circle()
+                            .trim(from: 0, to: animatedProgress)
+                            .stroke(
+                                Brand.Color.trail.gradient,
+                                style: StrokeStyle(lineWidth: 9, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                        VStack(spacing: 1) {
+                            Text(RideFormatters.distanceValue(meters: thisWeek.distance))
+                                .font(Brand.Font.metric(18))
+                                .foregroundStyle(Brand.Color.ink)
+                            Text(RideFormatters.distanceUnitLabel())
+                                .font(Brand.Font.micro)
+                                .foregroundStyle(Brand.Color.muted)
+                        }
                     }
+                    .frame(width: 92, height: 92)
                 }
-                .frame(width: 84, height: 84)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(LocalizedStringKey("weekly_goal"))
+                .buttonStyle(.plain)
+                .accessibilityLabel(LocalizedStringKey("weekly_goal"))
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(LocalizedStringKey("weekly_this_week"))
-                    .font(.subheadline.weight(.semibold))
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(LocalizedStringKey("weekly_this_week"))
+                        .font(Brand.Font.headline)
+                        .foregroundStyle(Brand.Color.ink)
 
-                HStack(spacing: 16) {
-                    labeledValue(LocalizedStringKey("duration_title"), thisWeek.duration.formattedAsTimer)
-                    labeledValue(
-                        LocalizedStringKey("weekly_rides"),
-                        "\(thisWeek.rideCount)"
-                    )
+                    HStack(spacing: 16) {
+                        BrandMetric(
+                            title: LocalizedStringKey("duration_title"),
+                            value: thisWeek.duration.formattedAsTimer,
+                            size: 16,
+                            alignment: .leading
+                        )
+                        BrandMetric(
+                            title: LocalizedStringKey("weekly_rides"),
+                            value: "\(thisWeek.rideCount)",
+                            size: 16,
+                            alignment: .leading
+                        )
+                    }
+
+                    Text(comparisonText)
+                        .font(Brand.Font.micro)
+                        .foregroundStyle(Brand.Color.muted)
+
+                    Text(String(
+                        format: NSLocalizedString("weekly_goal_caption", comment: ""),
+                        RideFormatters.distance(meters: goalMeters)
+                    ))
+                    .font(Brand.Font.micro)
+                    .foregroundStyle(Brand.Color.trail)
                 }
-
-                Text(comparisonText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(String(
-                    format: NSLocalizedString("weekly_goal_caption", comment: ""),
-                    RideFormatters.distance(meters: goalMeters)
-                ))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 6)
+        .onAppear {
+            withAnimation(reduceMotion ? .easeOut(duration: 0.2) : Brand.Motion.ring) {
+                animatedProgress = progress
+            }
+        }
+        .onChange(of: progress) { _, newValue in
+            withAnimation(Brand.Motion.soft) {
+                animatedProgress = newValue
+            }
+        }
         .sheet(isPresented: $showGoalEditor) {
             WeeklyGoalEditor()
         }
@@ -80,16 +105,6 @@ struct WeeklyGoalCard: View {
         let formatted = RideFormatters.distance(meters: abs(delta))
         let key = delta > 0 ? "weekly_vs_last_up" : "weekly_vs_last_down"
         return String(format: NSLocalizedString(key, comment: ""), formatted)
-    }
-
-    private func labeledValue(_ title: LocalizedStringKey, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.subheadline.weight(.semibold).monospacedDigit())
-        }
     }
 }
 
@@ -115,7 +130,7 @@ struct WeeklyGoalEditor: View {
                         set: { goalKilometers = RideFormatters.weeklyGoalKilometers(fromDisplay: $0, system: system) }
                     ), in: 5...500, step: 5) {
                         Text(RideFormatters.distance(meters: goalKilometers * 1000))
-                            .font(.headline.monospacedDigit())
+                            .font(Brand.Font.metric(22))
                     }
                 } header: {
                     Text(LocalizedStringKey("weekly_goal_setting"))
@@ -123,6 +138,7 @@ struct WeeklyGoalEditor: View {
                     Text(LocalizedStringKey("weekly_goal_footer"))
                 }
             }
+            .tint(Brand.Color.trail)
             .navigationTitle(LocalizedStringKey("weekly_goal"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

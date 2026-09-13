@@ -29,6 +29,9 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     /// Live track split at GPS / network gaps, plus road fills when they recover.
     @Published var routeSegments: [[CLLocationCoordinate2D]] = []
 
+    /// Live track colored by speed on each stretch.
+    @Published var liveSpeedSlices: [SpeedColoredSlice] = []
+
     /// Время начала трекинга
     @Published var startTime: Date?
 
@@ -77,6 +80,10 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
     /// Текущий регион карты (используется для контроля позиции камеры)
     @Published var currentRegion: MKCoordinateRegion?
+
+    /// App GPS / simulation fix used for the rider puck (not MapKit's system user location).
+    @Published private(set) var displayCoordinate: CLLocationCoordinate2D?
+    @Published private(set) var displayCourse: CLLocationDirection = -1
 
     // MARK: - Navigation / Routing (Ephemeral)
 
@@ -210,6 +217,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         let gpsSegments = RideTrackGeometry.segments(from: locations)
         requestGapFills(for: gpsSegments)
         routeSegments = RideTrackGeometry.stitchedDisplay(gpsSegments: gpsSegments, fills: gapFills)
+        liveSpeedSlices = RideTrackGeometry.speedColoredSlices(gpsSegments: gpsSegments, fills: gapFills)
     }
 
     private func requestGapFills(for segments: [[CLLocation]]) {
@@ -229,8 +237,13 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
                 guard path.count >= 2 else { return }
                 self.gapFills[key] = path
                 let latest = self.locationService.recordedLocations
+                let gpsSegments = RideTrackGeometry.segments(from: latest)
                 self.routeSegments = RideTrackGeometry.stitchedDisplay(
-                    gpsSegments: RideTrackGeometry.segments(from: latest),
+                    gpsSegments: gpsSegments,
+                    fills: self.gapFills
+                )
+                self.liveSpeedSlices = RideTrackGeometry.speedColoredSlices(
+                    gpsSegments: gpsSegments,
                     fills: self.gapFills
                 )
                 self.calculateTraveledDistance()
@@ -240,6 +253,9 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
     /// Обработка обновления текущей локации
     private func handleLocationUpdate(_ location: CLLocation) {
+        displayCoordinate = location.coordinate
+        displayCourse = location.course
+
         // Авто-возобновление (если находимся в авто-паузе и начали двигаться)
         if isTrackingActive && isPaused && isAutoPaused {
             let speedKmh = max(0, location.speed) * 3.6
@@ -750,6 +766,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     private func resetLiveRideState() {
         routeCoordinates.removeAll()
         routeSegments.removeAll()
+        liveSpeedSlices.removeAll()
         gapFills.removeAll()
         fillingGapKeys.removeAll()
         matchedRoute.removeAll()
@@ -795,7 +812,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     #if DEBUG
     // MARK: - Developer ride simulation
 
-    /// Starts a live ride that moves around the current (or Kyiv) point at ~20 km/h.
+    /// Starts a live ride that moves around the current (or Kyiv) point at a varying city pace.
     func startDeveloperSimulatedRide() {
         locationService.stopRideSimulation()
         locationService.armRideSimulation()

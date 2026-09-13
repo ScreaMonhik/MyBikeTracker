@@ -283,6 +283,14 @@ final class RidesViewModel: ObservableObject {
             )
             ride.id = dto.id
             ride.lineColorHex = dto.lineColorHex
+            ride.route = dto.route.map {
+                Ride.Coordinate(
+                    CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude),
+                    altitude: $0.altitude,
+                    timestamp: $0.timestamp,
+                    speed: $0.speed
+                )
+            }
             modelContext.insert(ride)
             importedCount += 1
         }

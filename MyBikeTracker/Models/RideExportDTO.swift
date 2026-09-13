@@ -26,6 +26,8 @@ struct RideExportDTO: Codable, Identifiable {
         var latitude: Double
         var longitude: Double
         var altitude: Double?
+        var timestamp: TimeInterval?
+        var speed: Double?
     }
 }
 
@@ -45,10 +47,22 @@ extension RideExportDTO {
         self.bikeId = ride.bikeId
         self.lineColorHex = ride.lineColorHex
         self.route = ride.route.map {
-            RouteCoordinate(latitude: $0.latitude, longitude: $0.longitude, altitude: $0.altitude)
+            RouteCoordinate(
+                latitude: $0.latitude,
+                longitude: $0.longitude,
+                altitude: $0.altitude,
+                timestamp: $0.timestamp,
+                speed: $0.speed
+            )
         }
         self.matchedRoute = ride.matchedRoute?.map {
-            RouteCoordinate(latitude: $0.latitude, longitude: $0.longitude, altitude: $0.altitude)
+            RouteCoordinate(
+                latitude: $0.latitude,
+                longitude: $0.longitude,
+                altitude: $0.altitude,
+                timestamp: $0.timestamp,
+                speed: $0.speed
+            )
         }
     }
 }

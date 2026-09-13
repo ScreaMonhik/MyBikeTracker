@@ -18,7 +18,7 @@ struct HomeMapView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .topTrailing) {
+            ZStack(alignment: .top) {
                 UIKitMapView(
                     rides: ridesViewModel.rides,
                     lineColor: RouteLineColor.uiColor(from: historyColorHex),
@@ -36,24 +36,32 @@ struct HomeMapView: View {
                     },
                     viewModel: viewModel
                 )
-                .ignoresSafeArea()
+                .ignoresSafeArea(edges: [.top, .horizontal])
                 .onAppear {
                     viewModel.forceAutoCenter()
                 }
 
-                if viewModel.navigationRoute != nil {
-                    GlassMapButton(
-                        systemImage: "xmark",
-                        accessibilityKey: LocalizedStringKey("clear_route_title")
-                    ) {
-                        viewModel.clearRoute()
+                HStack(alignment: .top) {
+                    BrandFloatingChip(
+                        title: LocalizedStringKey("map_tab_title"),
+                        systemImage: "map.fill"
+                    )
+                    Spacer()
+                    if viewModel.navigationRoute != nil {
+                        GlassMapButton(
+                            systemImage: "xmark",
+                            accessibilityKey: LocalizedStringKey("clear_route_title")
+                        ) {
+                            viewModel.clearRoute()
+                        }
+                        .transition(.scale.combined(with: .opacity))
                     }
-                    .padding(.trailing, 16)
-                    .padding(.top, 12)
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .animation(Brand.Motion.snappy, value: viewModel.navigationRoute != nil)
             }
-            .navigationTitle(LocalizedStringKey("map_tab_title"))
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 

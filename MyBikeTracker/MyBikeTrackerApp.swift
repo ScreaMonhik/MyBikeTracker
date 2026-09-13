@@ -36,6 +36,8 @@ struct MyBikeTrackerApp: App {
             }
         }
 
+        Brand.Appearance.configure()
+
         locationService = LocationService()
         ridesViewModel = RidesViewModel(modelContext: container.mainContext)
         let healthKitService = HealthKitService()

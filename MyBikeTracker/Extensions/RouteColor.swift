@@ -10,8 +10,8 @@ import UIKit
 
 /// Stored route-line colors: `#RRGGBB`, plus the legacy 8 named presets.
 enum RouteLineColor {
-    static let defaultTrackerHex = "#FF3B30"
-    static let defaultHistoryHex = "#007AFF"
+    static let defaultTrackerHex = "#E85A32"
+    static let defaultHistoryHex = "#1B7A6E"
 
     static func color(from stored: String, fallbackHex: String = defaultHistoryHex) -> Color {
         Color(uiColor: uiColor(from: stored, fallbackHex: fallbackHex))

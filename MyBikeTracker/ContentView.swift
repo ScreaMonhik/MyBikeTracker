@@ -7,11 +7,13 @@
 
 import SwiftUI
 
-enum AppTab: Hashable {
+enum AppTab: Hashable, CaseIterable, Identifiable {
     case map
     case trip
     case history
     case settings
+
+    var id: Self { self }
 }
 
 struct ContentView: View {
@@ -27,36 +29,40 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             HomeMapView(viewModel: mapViewModel, ridesViewModel: ridesViewModel)
-                .tabItem {
-                    Label(LocalizedStringKey("map_tab_title"), systemImage: "map")
-                }
+                .hidesSystemTabBar()
+                .brandTabBarClearance()
                 .tag(AppTab.map)
 
             TrackerView(viewModel: mapViewModel)
-                .tabItem {
-                    Label(LocalizedStringKey("trip_tab_title"), systemImage: "bicycle")
-                }
+                .hidesSystemTabBar()
+                .brandTabBarClearance()
                 .tag(AppTab.trip)
 
             HistoryView(ridesViewModel: ridesViewModel)
-                .tabItem {
-                    Label(LocalizedStringKey("history_tab_title"), systemImage: "list.bullet.rectangle")
-                }
+                .hidesSystemTabBar()
                 .tag(AppTab.history)
 
             SettingsView(
                 ridesViewModel: ridesViewModel,
                 mapViewModel: mapViewModel
             )
-            .tabItem {
-                Label(LocalizedStringKey("settings_tab_title"), systemImage: "gear")
-            }
+            .hidesSystemTabBar()
             .tag(AppTab.settings)
         }
+        .tint(Brand.Color.trail)
+        .background(Brand.Color.canvas)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            BrandTabBar(selection: $selectedTab)
+        }
         .onOpenURL { url in
-            guard url.scheme?.lowercased() == "mybiketracker",
-                  url.host?.lowercased() == "tracker" else { return }
-            selectedTab = .trip
+            guard url.scheme?.lowercased() == "mybiketracker" else { return }
+            switch url.host?.lowercased() {
+            case "map": selectedTab = .map
+            case "tracker", "trip": selectedTab = .trip
+            case "history": selectedTab = .history
+            case "settings": selectedTab = .settings
+            default: break
+            }
         }
         .fullScreenCover(isPresented: $mapViewModel.isEndRideConfirmationPresented) {
             EndRideConfirmationView(

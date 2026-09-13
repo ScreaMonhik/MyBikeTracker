@@ -12,6 +12,9 @@ struct HistoryView: View {
     @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
     @State private var showDeleteConfirmation = false
     @State private var indexSetToDelete: IndexSet?
+    @State private var openedRideID: UUID?
+    @State private var appeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -21,6 +24,9 @@ struct HistoryView: View {
                         thisWeek: ridesViewModel.thisWeek,
                         lastWeek: ridesViewModel.lastWeek
                     )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
 
                 if !ridesViewModel.chainDueBikes.isEmpty {
@@ -34,27 +40,60 @@ struct HistoryView: View {
                             } icon: {
                                 Image(systemName: "wrench.and.screwdriver")
                             }
-                            .foregroundStyle(.orange)
+                            .font(Brand.Font.caption)
+                            .foregroundStyle(Brand.Color.amber)
+                            .padding(.vertical, 4)
+                            .brandListCard(fill: Brand.Color.amber.opacity(0.12))
                         }
                     }
                 }
 
                 Section {
-                    ForEach(ridesViewModel.rides) { ride in
-                        NavigationLink {
-                            RideDetailView(
-                                ridesViewModel: ridesViewModel,
-                                ride: ride,
-                                bikeName: ridesViewModel.bike(for: ride)?.name
+                    if ridesViewModel.rides.isEmpty {
+                        BrandEmptyState(
+                            title: LocalizedStringKey("history_empty_title"),
+                            message: LocalizedStringKey("history_empty_message")
+                        )
+                        .listRowInsets(EdgeInsets(top: 12, leading: 0, bottom: 12, trailing: 0))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    } else {
+                        ForEach(Array(ridesViewModel.rides.enumerated()), id: \.element.id) { index, ride in
+                            Button {
+                                openedRideID = ride.id
+                            } label: {
+                                RideRowView(ride: ride)
+                            }
+                            .buttonStyle(BrandCardButtonStyle())
+                            .brandListCard()
+                            .opacity(appeared ? 1 : 0)
+                            .offset(y: appeared ? 0 : 10)
+                            .animation(
+                                Brand.Motion.appear(reduceMotion: reduceMotion).delay(Double(min(index, 8)) * 0.04),
+                                value: appeared
                             )
-                        } label: {
-                            RideRowView(ride: ride)
+                        }
+                        .onDelete { offsets in
+                            indexSetToDelete = offsets
+                            showDeleteConfirmation = true
                         }
                     }
-                    .onDelete { offsets in
-                        indexSetToDelete = offsets
-                        showDeleteConfirmation = true
+                } header: {
+                    if !ridesViewModel.rides.isEmpty {
+                        BrandSectionHeader(title: LocalizedStringKey("history_rides_section"))
                     }
+                }
+            }
+            .listStyle(.plain)
+            .brandListChrome()
+            .brandListGutter()
+            .navigationDestination(item: $openedRideID) { rideID in
+                if let ride = ridesViewModel.rides.first(where: { $0.id == rideID }) {
+                    RideDetailView(
+                        ridesViewModel: ridesViewModel,
+                        ride: ride,
+                        bikeName: ridesViewModel.bike(for: ride)?.name
+                    )
                 }
             }
             .navigationTitle(LocalizedStringKey("history_title"))
@@ -64,7 +103,8 @@ struct HistoryView: View {
                         RideCalendarView(ridesViewModel: ridesViewModel)
                     } label: {
                         Image(systemName: "calendar")
-                            .font(.title3)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Brand.Color.trail)
                     }
                     .accessibilityLabel(LocalizedStringKey("calendar_title"))
                 }
@@ -78,6 +118,9 @@ struct HistoryView: View {
                 Button(LocalizedStringKey("no"), role: .cancel) {}
             } message: {
                 Text(LocalizedStringKey("delete_confirmation_message"))
+            }
+            .onAppear {
+                appeared = true
             }
         }
     }

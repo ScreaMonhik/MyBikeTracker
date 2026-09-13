@@ -495,19 +495,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Completed rides use the map color until you choose a custom color for a ride — tap its line on the Map tab or open the ride in History."
+            "value": "The live ride line is colored by speed — teal is slow, ember is fast. The color below tints the rider marker. Completed rides use the map color until you choose a custom color for a ride — tap its line on the Map tab or open the ride in History."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Завершённые поездки используют цвет общей карты, пока вы не зададите свой цвет линии — нажатием на линию на вкладке «Карта» или в истории."
+            "value": "Линия активной поездки окрашивается по скорости: бирюзовый — медленно, оранжевый — быстро. Цвет ниже задаёт маркер райдера. Завершённые поездки используют цвет общей карты, пока вы не зададите свой цвет линии — нажатием на линию на вкладке «Карта» или в истории."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Завершені поїздки використовують колір загальної карти, доки ви не задасте свій колір лінії — натисканням на лінію на вкладці «Карта» або в історії."
+            "value": "Лінія активної поїздки забарвлюється за швидкістю: бірюзовий — повільно, помаранчевий — швидко. Колір нижче задає маркер райдера. Завершені поїздки використовують колір загальної карти, доки ви не задасте свій колір лінії — натисканням на лінію на вкладці «Карта» або в історії."
           }
         }
       }
@@ -1346,6 +1346,75 @@
           "stringUnit": {
             "state": "translated",
             "value": "Налаштування"
+          }
+        }
+      }
+    },
+    "speed_legend_accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Track color by speed. Teal is slow, red is fast."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цвет линии по скорости. Бирюзовый — медленно, красный — быстро."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Колір лінії за швидкістю. Бірюзовий — повільно, червоний — швидко."
+          }
+        }
+      }
+    },
+    "speed_legend_fast": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fast"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Быстро"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Швидко"
+          }
+        }
+      }
+    },
+    "speed_legend_slow": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slow"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Медленно"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повільно"
           }
         }
       }
@@ -3048,6 +3117,213 @@
           "stringUnit": {
             "state": "translated",
             "value": "Я на велосипеді: %@, %@. %@"
+          }
+        }
+      }
+    },
+    "brand_tagline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ride with intention"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Катайся осознанно"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Катайся усвідомлено"
+          }
+        }
+      }
+    },
+    "history_empty_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No rides yet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока нет поездок"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поки немає поїздок"
+          }
+        }
+      }
+    },
+    "history_empty_message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start a trip and it will land here as a story you can reopen."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Начни поездку — она появится здесь как история, к которой можно вернуться."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Почни поїздку — вона з’явиться тут як історія, до якої можна повернутися."
+          }
+        }
+      }
+    },
+    "history_rides_section": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent rides"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Недавние поездки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нещодавні поїздки"
+          }
+        }
+      }
+    },
+    "search_placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search a place or address"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск места или адреса"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пошук місця або адреси"
+          }
+        }
+      }
+    },
+    "search_empty_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where to?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Куда едем?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Куди їдемо?"
+          }
+        }
+      }
+    },
+    "search_empty_message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find a destination and we’ll draw the route on the map."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Найди точку назначения — маршрут появится на карте."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Знайди точку призначення — маршрут з’явиться на мапі."
+          }
+        }
+      }
+    },
+    "ride_when_today": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сьогодні"
+          }
+        }
+      }
+    },
+    "ride_when_yesterday": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yesterday"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вчера"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вчора"
           }
         }
       }

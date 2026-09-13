@@ -86,14 +86,18 @@ struct GlassMapButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            BrandHaptics.light()
+            action()
+        } label: {
             Image(systemName: systemImage)
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(Brand.Color.ink)
                 .frame(width: 50, height: 50)
                 .legacyGlassChrome(cornerRadius: 25, shape: Circle())
         }
         .liquidGlassButtonStyle(circular: true)
+        .shadow(color: .black.opacity(0.10), radius: 10, y: 4)
         .accessibilityLabel(accessibilityKey)
     }
 }
@@ -106,16 +110,40 @@ struct GlassActionButton: View {
     var tint: Color? = nil
     let action: () -> Void
 
+    private var accent: Color { tint ?? Brand.Color.trail }
+
     var body: some View {
-        Button(action: action) {
+        Button {
+            if prominent {
+                BrandHaptics.medium()
+            } else {
+                BrandHaptics.light()
+            }
+            action()
+        } label: {
             Label(title, systemImage: systemImage)
-                .font(.headline.weight(.semibold))
+                .font(Brand.Font.headline)
                 .padding(.horizontal, 22)
                 .padding(.vertical, 14)
-                .legacyGlassChrome(cornerRadius: 24, shape: Capsule())
+                .frame(minWidth: 132)
+                .foregroundStyle(prominent ? Color.white : Brand.Color.ink)
+                .background {
+                    if prominent {
+                        Capsule()
+                            .fill(accent.gradient)
+                    } else {
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                    }
+                }
+                .overlay {
+                    Capsule()
+                        .strokeBorder(prominent ? Color.white.opacity(0.18) : Brand.Color.hairline, lineWidth: 1)
+                }
+                .shadow(color: prominent ? accent.opacity(0.35) : .black.opacity(0.08), radius: prominent ? 16 : 8, y: 6)
         }
-        .liquidGlassButtonStyle(prominent: prominent)
-        .tint(tint)
+        .buttonStyle(.plain)
+        .tint(accent)
     }
 }
 
@@ -123,8 +151,14 @@ private extension View {
     /// Material chrome used only before Liquid Glass exists. On iOS 26 the
     /// system button style already draws the glass surface.
     @ViewBuilder
-    func legacyGlassChrome<S: InsettableShape>(cornerRadius: CGFloat, shape: S) -> some View {
-        if #available(iOS 26.0, *) {
+    func legacyGlassChrome<S: InsettableShape>(
+        cornerRadius: CGFloat,
+        shape: S,
+        enabled: Bool = true
+    ) -> some View {
+        if !enabled {
+            self
+        } else if #available(iOS 26.0, *) {
             self
         } else {
             self

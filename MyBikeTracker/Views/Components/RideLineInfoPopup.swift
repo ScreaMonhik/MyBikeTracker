@@ -70,7 +70,7 @@ struct RideLineInfoPopup: View {
                     .fill(rideColor)
                     .frame(width: 9, height: 9)
                 Text(ride.startDate.formatted(date: .abbreviated, time: .shortened))
-                    .font(.subheadline.weight(.semibold))
+                    .font(Brand.Font.headline)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                 Spacer(minLength: 0)
@@ -78,8 +78,8 @@ struct RideLineInfoPopup: View {
 
             if let bikeName = ridesViewModel.bike(for: ride)?.name {
                 Text(bikeName)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .font(Brand.Font.caption)
+                    .foregroundStyle(Brand.Color.muted)
                     .lineLimit(1)
             }
 
@@ -129,12 +129,12 @@ struct RideLineInfoPopup: View {
     private func metric(_ title: LocalizedStringKey, _ value: String) -> some View {
         VStack(spacing: 3) {
             Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(Brand.Font.micro)
+                .foregroundStyle(Brand.Color.muted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(value)
-                .font(.subheadline.weight(.bold).monospacedDigit())
+                .font(Brand.Font.metric(16))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }

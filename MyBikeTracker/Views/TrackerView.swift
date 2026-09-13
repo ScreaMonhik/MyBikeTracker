@@ -12,6 +12,7 @@ struct TrackerView: View {
     @ObservedObject var sensorService: BluetoothSensorService
     @State private var isShowingSearchSheet = false
     @State private var sharePayload: LocationSharePayload?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(viewModel: MapViewModel) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -42,13 +43,17 @@ struct TrackerView: View {
                 if isRideActive {
                     rideInfoPlaque
                         .padding(.horizontal, 16)
-                        .padding(.top, 8)
+                        .padding(.top, 10)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 Spacer(minLength: 0)
 
                 HStack(alignment: .bottom) {
+                    if isRideActive, !viewModel.liveSpeedSlices.isEmpty {
+                        SpeedTrackLegend()
+                            .transition(.move(edge: .leading).combined(with: .opacity))
+                    }
                     Spacer()
                     mapTools
                 }
@@ -58,15 +63,17 @@ struct TrackerView: View {
                 if !isRideActive, !bikes.isEmpty {
                     bikePicker
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 10)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
 
                 controlButtons
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 10)
             }
         }
-        .animation(.easeInOut(duration: 0.35), value: isRideActive)
-        .animation(.easeInOut(duration: 0.25), value: viewModel.isPaused)
+        .animation(Brand.Motion.appear(reduceMotion: reduceMotion), value: isRideActive)
+        .animation(Brand.Motion.snappy(reduceMotion: reduceMotion), value: viewModel.isPaused)
+        .animation(Brand.Motion.snappy(reduceMotion: reduceMotion), value: viewModel.liveSpeedSlices.isEmpty)
         .sheet(isPresented: $isShowingSearchSheet) {
             AddressSearchView(viewModel: viewModel)
         }
@@ -80,110 +87,103 @@ struct TrackerView: View {
             rides: [],
             liveCoordinates: viewModel.routeCoordinates,
             liveSegments: viewModel.routeSegments,
+            liveSpeedSlices: viewModel.liveSpeedSlices,
             lineColor: RouteLineColor.uiColor(from: trackerColorHex, fallbackHex: RouteLineColor.defaultTrackerHex),
             viewModel: viewModel
         )
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: [.top, .horizontal])
         .onAppear {
             viewModel.forceAutoCenter()
         }
     }
 
     private var rideInfoPlaque: some View {
-        VStack(spacing: 12) {
-            HStack {
+        VStack(spacing: 14) {
+            HStack(spacing: 8) {
                 Text(LocalizedStringKey("active_ride_title"))
-                    .font(.subheadline.weight(.semibold))
+                    .font(Brand.Font.headline)
+                    .foregroundStyle(Brand.Color.ink)
                 #if DEBUG
                 if viewModel.isDeveloperSimulationActive {
-                    Text(LocalizedStringKey("developer_simulation_badge"))
-                        .font(.caption2.weight(.bold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.purple.opacity(0.22)))
-                        .foregroundStyle(.purple)
+                    BrandBadge(
+                        title: LocalizedStringKey("developer_simulation_badge"),
+                        kind: .custom(.purple)
+                    )
                 }
                 #endif
-                Spacer()
+                Spacer(minLength: 0)
                 if let selectedBike {
                     Text(selectedBike.name)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .font(Brand.Font.caption)
+                        .foregroundStyle(Brand.Color.muted)
+                        .lineLimit(1)
                 }
-                Text(viewModel.isPaused
-                     ? LocalizedStringKey("tracking_paused_badge")
-                     : LocalizedStringKey("tracking_live_badge"))
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule().fill(viewModel.isPaused ? Color.orange.opacity(0.22) : Color.green.opacity(0.22))
-                    )
-                    .foregroundStyle(viewModel.isPaused ? Color.orange : Color.green)
+                BrandBadge(
+                    title: viewModel.isPaused
+                        ? LocalizedStringKey("tracking_paused_badge")
+                        : LocalizedStringKey("tracking_live_badge"),
+                    kind: viewModel.isPaused ? .paused : .live,
+                    showsPulse: !viewModel.isPaused
+                )
             }
 
             HStack(spacing: 0) {
-                metricBox(
+                BrandMetric(
                     title: LocalizedStringKey("time_title"),
-                    value: viewModel.elapsedTime.formattedAsTimer
+                    value: viewModel.elapsedTime.formattedAsTimer,
+                    size: 22
                 )
                 metricDivider
-                metricBox(
+                BrandMetric(
                     title: LocalizedStringKey("speed_title"),
-                    value: RideFormatters.speed(kmh: viewModel.currentSpeed)
+                    value: RideFormatters.speed(kmh: viewModel.currentSpeed),
+                    size: 22
                 )
                 metricDivider
-                metricBox(
+                BrandMetric(
                     title: LocalizedStringKey("distance_title"),
-                    value: RideFormatters.distance(meters: viewModel.traveledDistance)
+                    value: RideFormatters.distance(meters: viewModel.traveledDistance),
+                    size: 22
                 )
             }
 
-            HStack(spacing: 0) {
-                metricBox(
-                    title: LocalizedStringKey("elevation_title"),
-                    value: RideFormatters.elevation(meters: viewModel.elevationGain)
-                )
-                if let heartRate = sensorService.heartRate {
-                    metricDivider
-                    metricBox(
-                        title: LocalizedStringKey("sensors_heart_rate"),
-                        value: "\(heartRate)"
+            if viewModel.elevationGain > 0 || sensorService.heartRate != nil || sensorService.cadenceRPM != nil {
+                HStack(spacing: 0) {
+                    BrandMetric(
+                        title: LocalizedStringKey("elevation_title"),
+                        value: RideFormatters.elevation(meters: viewModel.elevationGain),
+                        size: 18
                     )
-                }
-                if let cadence = sensorService.cadenceRPM {
-                    metricDivider
-                    metricBox(
-                        title: LocalizedStringKey("sensors_cadence"),
-                        value: String(format: "%.0f", cadence)
-                    )
+                    if let heartRate = sensorService.heartRate {
+                        metricDivider
+                        BrandMetric(
+                            title: LocalizedStringKey("sensors_heart_rate"),
+                            value: "\(heartRate)",
+                            size: 18
+                        )
+                    }
+                    if let cadence = sensorService.cadenceRPM {
+                        metricDivider
+                        BrandMetric(
+                            title: LocalizedStringKey("sensors_cadence"),
+                            value: String(format: "%.0f", cadence),
+                            size: 18
+                        )
+                    }
                 }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
-        .liquidGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .liquidGlass(in: RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous))
+        .shadow(color: .black.opacity(0.10), radius: 18, y: 8)
     }
 
     private var metricDivider: some View {
         Rectangle()
-            .fill(.primary.opacity(0.12))
+            .fill(Brand.Color.hairline)
             .frame(width: 1, height: 36)
-    }
-
-    private func metricBox(title: LocalizedStringKey, value: String) -> some View {
-        VStack(spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Text(value)
-                .font(.title3.weight(.bold).monospacedDigit())
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-        }
-        .frame(maxWidth: .infinity)
     }
 
     private var bikePicker: some View {
@@ -195,9 +195,10 @@ struct TrackerView: View {
             }
         } label: {
             Label(selectedBike?.name ?? NSLocalizedString("garage_choose_bike", comment: ""), systemImage: "bicycle")
-                .font(.subheadline.weight(.semibold))
+                .font(Brand.Font.caption)
+                .foregroundStyle(Brand.Color.ink)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+                .padding(.vertical, 10)
                 .liquidGlass(in: Capsule())
         }
     }
@@ -247,8 +248,9 @@ struct TrackerView: View {
                     title: LocalizedStringKey("start_button_title"),
                     systemImage: "play.fill",
                     prominent: true,
-                    tint: .green
+                    tint: Brand.Color.ember
                 ) {
+                    BrandHaptics.success()
                     viewModel.startTracking()
                 }
             } else {
@@ -258,7 +260,7 @@ struct TrackerView: View {
                         : LocalizedStringKey("pause_button_title"),
                     systemImage: viewModel.isPaused ? "play.fill" : "pause.fill",
                     prominent: viewModel.isPaused,
-                    tint: viewModel.isPaused ? .green : nil
+                    tint: viewModel.isPaused ? Brand.Color.meadow : nil
                 ) {
                     if viewModel.isPaused {
                         viewModel.resumeTracking()
@@ -270,8 +272,9 @@ struct TrackerView: View {
                 GlassActionButton(
                     title: LocalizedStringKey("stop_button_title"),
                     systemImage: "stop.fill",
-                    tint: .red
+                    tint: Brand.Color.danger
                 ) {
+                    BrandHaptics.warning()
                     viewModel.requestStopTracking()
                 }
             }

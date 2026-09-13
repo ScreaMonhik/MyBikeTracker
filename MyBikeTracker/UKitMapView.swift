@@ -12,6 +12,7 @@ struct UIKitMapView: View {
     var rides: [Ride] = []
     var liveCoordinates: [CLLocationCoordinate2D] = []
     var liveSegments: [[CLLocationCoordinate2D]] = []
+    var liveSpeedSlices: [SpeedColoredSlice] = []
     let lineColor: UIColor
     var defaultRideColorHex: String = RouteLineColor.defaultHistoryHex
     var routeStyleRevision: Int = 0
@@ -36,11 +37,52 @@ struct UIKitMapView: View {
         )
     }
 
+    /// Tip of the drawn live track, otherwise the app GPS fix — never MapKit's system puck.
+    private var riderCoordinate: CLLocationCoordinate2D? {
+        if let tip = resolvedLiveSegments.last?.last ?? liveCoordinates.last {
+            return tip
+        }
+        return viewModel.displayCoordinate ?? viewModel.locationService.currentLocation?.coordinate
+    }
+
+    private var riderHeading: Angle? {
+        if viewModel.displayCourse >= 0 {
+            return Angle(degrees: viewModel.displayCourse)
+        }
+        let coords = liveCoordinates
+        guard coords.count >= 2 else { return nil }
+        return Angle(degrees: MapHelpers.bearing(from: coords[coords.count - 2], to: coords[coords.count - 1]))
+    }
+
+    private var isRiderLive: Bool {
+        viewModel.startTime != nil && !viewModel.isPaused
+    }
+
+    private var riderAccent: Color {
+        if viewModel.startTime != nil {
+            return SpeedHeatmap.color(forKmh: viewModel.currentSpeed)
+        }
+        return Color(uiColor: lineColor)
+    }
+
     var body: some View {
         let _ = routeStyleRevision
         MapReader { proxy in
             Map(position: $viewModel.cameraPosition) {
-                UserAnnotation()
+                if let riderCoordinate {
+                    Annotation(
+                        "",
+                        coordinate: riderCoordinate,
+                        anchor: .center
+                    ) {
+                        RiderPuck(
+                            heading: riderHeading,
+                            isLive: isRiderLive,
+                            accent: riderAccent
+                        )
+                    }
+                    .annotationTitles(.hidden)
+                }
 
                 if let navRoute = viewModel.navigationRoute {
                     MapPolyline(navRoute)
@@ -51,16 +93,15 @@ struct UIKitMapView: View {
                     }
                 }
 
-                ForEach(Array(resolvedLiveSegments.enumerated()), id: \.offset) { _, coords in
-                    if coords.count > 1 {
-                        MapPolyline(coordinates: coords)
-                            .stroke(Color(uiColor: lineColor), lineWidth: 4)
+                if !liveSpeedSlices.isEmpty {
+                    speedTrackMapContent(slices: liveSpeedSlices)
+                } else {
+                    ForEach(Array(resolvedLiveSegments.enumerated()), id: \.offset) { _, coords in
+                        if coords.count > 1 {
+                            MapPolyline(coordinates: coords)
+                                .stroke(Color(uiColor: lineColor), lineWidth: 4)
+                        }
                     }
-                }
-
-                if let lastCoord = resolvedLiveSegments.last?.last ?? liveCoordinates.last {
-                    MapCircle(center: lastCoord, radius: 8)
-                        .foregroundStyle(Color(uiColor: lineColor).opacity(0.4))
                 }
 
                 ForEach(rides) { ride in

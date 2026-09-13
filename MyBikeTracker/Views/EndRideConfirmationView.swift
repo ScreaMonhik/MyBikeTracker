@@ -4,62 +4,68 @@ struct EndRideConfirmationView: View {
     @ObservedObject var viewModel: MapViewModel
     let onConfirm: () -> Void
     let onCancel: () -> Void
+    @State private var appeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
-            Color(.systemBackground)
-                .ignoresSafeArea()
+            BrandCanvasBackground()
 
             VStack(spacing: 28) {
                 Spacer(minLength: 12)
 
                 Image(systemName: "flag.checkered")
-                    .font(.system(size: 54, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .padding(28)
-                    .liquidGlass(in: Circle())
+                    .font(.system(size: 48, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(width: 104, height: 104)
+                    .background(Brand.Color.trail.gradient, in: Circle())
+                    .shadow(color: Brand.Color.glowTrail, radius: 24, y: 10)
+                    .scaleEffect(appeared ? 1 : 0.82)
+                    .opacity(appeared ? 1 : 0)
 
                 VStack(spacing: 8) {
                     Text(LocalizedStringKey("end_ride_title"))
-                        .font(.title.weight(.bold))
+                        .font(Brand.Font.display(28))
+                        .foregroundStyle(Brand.Color.ink)
                         .multilineTextAlignment(.center)
 
                     Text(LocalizedStringKey("end_ride_subtitle"))
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Brand.Color.muted)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 12)
 
                     if viewModel.isPaused {
-                        Text(LocalizedStringKey("tracking_paused_badge"))
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.orange.opacity(0.22)))
-                            .foregroundStyle(.orange)
-                            .padding(.top, 4)
+                        BrandBadge(
+                            title: LocalizedStringKey("tracking_paused_badge"),
+                            kind: .paused
+                        )
+                        .padding(.top, 4)
                     }
                 }
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 10)
 
                 HStack(spacing: 0) {
-                    metricBox(
+                    BrandMetric(
                         title: LocalizedStringKey("time_title"),
                         value: viewModel.elapsedTime.formattedAsTimer
                     )
                     metricDivider
-                    metricBox(
+                    BrandMetric(
                         title: LocalizedStringKey("distance_title"),
                         value: RideFormatters.distance(meters: viewModel.traveledDistance)
                     )
                     metricDivider
-                    metricBox(
+                    BrandMetric(
                         title: LocalizedStringKey("speed_title"),
                         value: RideFormatters.speed(kmh: viewModel.averageSpeed)
                     )
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 16)
-                .liquidGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .liquidGlass(in: RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous))
+                .opacity(appeared ? 1 : 0)
 
                 Spacer(minLength: 8)
 
@@ -68,8 +74,11 @@ struct EndRideConfirmationView: View {
                         title: LocalizedStringKey("end_ride_confirm"),
                         systemImage: "checkmark",
                         prominent: true,
-                        tint: .red,
-                        action: onConfirm
+                        tint: Brand.Color.danger,
+                        action: {
+                            BrandHaptics.success()
+                            onConfirm()
+                        }
                     )
 
                     GlassActionButton(
@@ -83,25 +92,16 @@ struct EndRideConfirmationView: View {
             .padding(.horizontal, 24)
         }
         .interactiveDismissDisabled()
+        .onAppear {
+            withAnimation(Brand.Motion.appear(reduceMotion: reduceMotion)) {
+                appeared = true
+            }
+        }
     }
 
     private var metricDivider: some View {
         Rectangle()
-            .fill(.primary.opacity(0.12))
+            .fill(Brand.Color.hairline)
             .frame(width: 1, height: 36)
-    }
-
-    private func metricBox(title: LocalizedStringKey, value: String) -> some View {
-        VStack(spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Text(value)
-                .font(.title3.weight(.bold).monospacedDigit())
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-        }
-        .frame(maxWidth: .infinity)
     }
 }

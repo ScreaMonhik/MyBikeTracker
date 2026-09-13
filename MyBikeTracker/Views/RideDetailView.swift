@@ -18,69 +18,126 @@ struct RideDetailView: View {
 
     var body: some View {
         let rideColor = ride.resolvedLineColor(defaultHex: historyColorHex)
+        let speedSlices = ride.speedColoredSlices
+        let usesSpeedHeatmap = speedSlices.contains { $0.coordinates.count > 1 }
         let _ = ridesViewModel.routeStyleRevision
         ScrollView {
-            VStack(spacing: 0) {
+            VStack(spacing: 16) {
                 Map {
-                    ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
-                        if coords.count > 1 {
-                            MapPolyline(coordinates: coords)
-                                .stroke(rideColor, lineWidth: 3)
+                    if usesSpeedHeatmap {
+                        speedTrackMapContent(slices: speedSlices)
+                    } else {
+                        ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
+                            if coords.count > 1 {
+                                MapPolyline(coordinates: coords)
+                                    .stroke(rideColor, lineWidth: 4)
+                            }
                         }
                     }
                 }
-                .frame(height: 300)
+                .frame(height: 280)
+                .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous)
+                        .strokeBorder(Brand.Color.hairline, lineWidth: 1)
+                }
                 .onMapCameraChange { context in
                     currentRegion = context.region
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
 
-                VStack(alignment: .leading, spacing: 12) {
-                    infoRow(label: LocalizedStringKey("start_date_title"),
-                            value: ride.startDate.formatted(date: .long, time: .shortened))
-                    infoRow(label: LocalizedStringKey("duration_title"),
-                            value: ride.duration.formattedAsTimer)
-                    infoRow(label: LocalizedStringKey("distance_title"),
-                            value: RideFormatters.distance(meters: ride.distance))
-                    infoRow(label: LocalizedStringKey("average_speed_title"),
-                            value: RideFormatters.speed(kmh: ride.averageSpeed))
-                    infoRow(label: LocalizedStringKey("max_speed_title"),
-                            value: RideFormatters.speed(kmh: ride.maxSpeed))
-                    if ride.resolvedElevationGain > 0 {
-                        infoRow(label: LocalizedStringKey("elevation_title"),
-                                value: RideFormatters.elevation(meters: ride.resolvedElevationGain))
+                if usesSpeedHeatmap {
+                    HStack(spacing: 8) {
+                        Text(LocalizedStringKey("speed_legend_slow"))
+                        LinearGradient(
+                            colors: SpeedHeatmap.legendColors,
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(height: 6)
+                        .clipShape(Capsule())
+                        Text(LocalizedStringKey("speed_legend_fast"))
                     }
-                    if let bikeName {
-                        infoRow(label: LocalizedStringKey("garage_bike_name"), value: bikeName)
+                    .font(Brand.Font.micro)
+                    .foregroundStyle(Brand.Color.muted)
+                    .padding(.horizontal, 20)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(LocalizedStringKey("speed_legend_accessibility"))
+                }
+
+                BrandCard {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                        BrandMetric(
+                            title: LocalizedStringKey("distance_title"),
+                            value: RideFormatters.distance(meters: ride.distance),
+                            size: 22,
+                            alignment: .leading
+                        )
+                        BrandMetric(
+                            title: LocalizedStringKey("duration_title"),
+                            value: ride.duration.formattedAsTimer,
+                            size: 22,
+                            alignment: .leading
+                        )
+                        BrandMetric(
+                            title: LocalizedStringKey("average_speed_title"),
+                            value: RideFormatters.speed(kmh: ride.averageSpeed),
+                            size: 18,
+                            alignment: .leading
+                        )
+                        BrandMetric(
+                            title: LocalizedStringKey("max_speed_title"),
+                            value: RideFormatters.speed(kmh: ride.maxSpeed),
+                            size: 18,
+                            alignment: .leading
+                        )
+                        if ride.resolvedElevationGain > 0 {
+                            BrandMetric(
+                                title: LocalizedStringKey("elevation_title"),
+                                value: RideFormatters.elevation(meters: ride.resolvedElevationGain),
+                                size: 18,
+                                alignment: .leading
+                            )
+                        }
+                        if let bikeName {
+                            BrandMetric(
+                                title: LocalizedStringKey("garage_bike_name"),
+                                value: bikeName,
+                                size: 18,
+                                alignment: .leading
+                            )
+                        }
                     }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(LocalizedStringKey("start_date_title"))
+                            .font(Brand.Font.micro)
+                            .foregroundStyle(Brand.Color.muted)
+                        Text(ride.startDate.formatted(date: .long, time: .shortened))
+                            .font(Brand.Font.headline)
+                            .foregroundStyle(Brand.Color.ink)
+                    }
+                    .padding(.top, 4)
 
                     RideLineColorEditor(ride: ride, ridesViewModel: ridesViewModel)
                         .padding(.top, 4)
-
-                    let profile = ride.elevationProfile
-                    if profile.count > 1 {
-                        ElevationProfileView(samples: profile)
-                            .padding(.top, 8)
-                    }
                 }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+
+                let profile = ride.elevationProfile
+                if profile.count > 1 {
+                    BrandCard {
+                        ElevationProfileView(samples: profile)
+                    }
+                    .padding(.horizontal, 16)
+                }
             }
+            .padding(.bottom, 24)
         }
+        .brandScreen()
         .navigationTitle(LocalizedStringKey("ride_details"))
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private func infoRow(label: LocalizedStringKey, value: String) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(label)
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text(value)
-                    .fontWeight(.semibold)
-            }
-            .padding(.vertical, 4)
-            Divider()
-        }
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
     }
 }

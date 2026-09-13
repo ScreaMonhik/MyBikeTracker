@@ -117,6 +117,7 @@ struct RideCalendarView: View {
             Spacer()
         }
         .padding(.top, 8)
+        .brandScreen()
     }
 
     // MARK: - Year
@@ -162,6 +163,7 @@ struct RideCalendarView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
+        .brandScreen()
     }
 
     // MARK: - Shared
@@ -233,16 +235,16 @@ private struct MonthDayCell: View {
         VStack(spacing: 4) {
             Text(date, format: .dateTime.day())
                 .font(.body.weight(isToday ? .semibold : .regular))
-                .foregroundStyle(isToday ? Color.white : Color.primary)
+                .foregroundStyle(isToday ? Color.white : Brand.Color.ink)
                 .frame(width: 36, height: 36)
                 .background {
                     if isToday {
-                        Circle().fill(Color.accentColor)
+                        Circle().fill(Brand.Color.ember.gradient)
                     }
                 }
 
             Circle()
-                .fill(hasRide ? Color.accentColor : Color.clear)
+                .fill(hasRide ? Brand.Color.trail : Color.clear)
                 .frame(width: 6, height: 6)
         }
         .frame(maxWidth: .infinity)
@@ -268,7 +270,7 @@ private struct MiniMonthView: View {
             Button(action: onSelectMonth) {
                 Text(month.formatted(.dateTime.month(.wide)))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Brand.Color.trail)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
@@ -306,11 +308,11 @@ private struct MiniMonthView: View {
         let isToday = calendar.isDateInToday(day.date)
         return Text(day.date, format: .dateTime.day())
             .font(.system(size: 10, weight: isToday ? .bold : .regular))
-            .foregroundStyle(isToday ? Color.white : Color.primary)
+            .foregroundStyle(isToday ? Color.white : Brand.Color.ink)
             .frame(maxWidth: .infinity, minHeight: 14)
             .background {
                 if isToday {
-                    Circle().fill(Color.accentColor)
+                    Circle().fill(Brand.Color.ember.gradient)
                 }
             }
     }

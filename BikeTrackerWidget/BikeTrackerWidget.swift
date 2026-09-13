@@ -268,7 +268,7 @@ private struct CalendarDayCell: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(hasRide ? Color.green : Color(.systemGray5))
+                .fill(hasRide ? Color(red: 0.106, green: 0.478, blue: 0.431) : Color(.systemGray5))
             Text("\(day)")
                 .font(.system(size: 10, weight: isToday ? .black : .regular))
                 .foregroundStyle(hasRide ? .white : .primary)

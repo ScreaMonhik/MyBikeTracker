@@ -16,52 +16,45 @@ struct AddressSearchView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Top Search Header
                 HStack(spacing: 12) {
                     HStack(spacing: 8) {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(Brand.Color.muted)
 
-                        TextField("Search destination...", text: $viewModel.searchQuery)
+                        TextField(LocalizedStringKey("search_placeholder"), text: $viewModel.searchQuery)
                             .focused($isSearchFocused)
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
 
                         if !viewModel.searchQuery.isEmpty {
-                            Button(action: {
+                            Button {
                                 viewModel.searchQuery = ""
-                            }) {
+                            } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(Brand.Color.muted)
                             }
                         }
                     }
-                    .padding(10)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
+                    .padding(12)
+                    .background(Brand.Color.surfaceMuted, in: Capsule())
 
-                    Button("Cancel") {
+                    Button(LocalizedStringKey("cancel_button")) {
                         dismiss()
                     }
-                    .foregroundColor(.blue)
+                    .foregroundStyle(Brand.Color.trail)
+                    .font(Brand.Font.caption)
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
 
-                Divider()
-
-                // Results List
                 if viewModel.searchResults.isEmpty {
-                    VStack(spacing: 12) {
-                        Spacer()
-                        Image(systemName: "mappin.and.ellipse")
-                            .font(.system(size: 44))
-                            .foregroundColor(.secondary)
-                        Text("Search for places or addresses")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
+                    BrandEmptyState(
+                        title: LocalizedStringKey("search_empty_title"),
+                        message: LocalizedStringKey("search_empty_message"),
+                        systemImage: "mappin.and.ellipse"
+                    )
+                    .padding(.top, 48)
+                    Spacer()
                 } else {
                     List(viewModel.searchResults, id: \.self) { completion in
                         Button {
@@ -70,14 +63,14 @@ struct AddressSearchView: View {
                                 dismiss()
                             }
                         } label: {
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text(completion.title)
-                                    .font(.body)
-                                    .foregroundColor(.primary)
+                                    .font(Brand.Font.headline)
+                                    .foregroundStyle(Brand.Color.ink)
                                 if !completion.subtitle.isEmpty {
                                     Text(completion.subtitle)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .font(Brand.Font.micro)
+                                        .foregroundStyle(Brand.Color.muted)
                                 }
                             }
                             .padding(.vertical, 4)
@@ -85,8 +78,10 @@ struct AddressSearchView: View {
                     }
                     .listStyle(.plain)
                     .scrollDismissesKeyboard(.immediately)
+                    .scrollContentBackground(.hidden)
                 }
             }
+            .brandScreen()
             .navigationBarHidden(true)
             .onAppear {
                 isSearchFocused = true

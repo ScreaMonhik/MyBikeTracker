@@ -50,6 +50,7 @@ final class Ride {
             routeData = (try? JSONEncoder().encode(newValue)) ?? Data()
             coordinateCache.route = newValue
             coordinateCache.displaySegments = nil
+            coordinateCache.speedSlices = nil
         }
     }
 
@@ -65,6 +66,7 @@ final class Ride {
             matchedRouteData = newValue.flatMap { try? JSONEncoder().encode($0) }
             coordinateCache.matched = newValue
             coordinateCache.displaySegments = nil
+            coordinateCache.speedSlices = nil
         }
     }
 
@@ -92,6 +94,23 @@ final class Ride {
         return segments
     }
 
+    /// Heatmap pieces from raw GPS (speed or inferred from timestamps).
+    var speedColoredSlices: [SpeedColoredSlice] {
+        if let cached = coordinateCache.speedSlices { return cached }
+        let points = route
+        let hasMotion = points.contains { ($0.timestamp ?? 0) > 0 || ($0.speed ?? -1) >= 0 }
+        let slices: [SpeedColoredSlice]
+        if hasMotion, points.count > 1 {
+            slices = RideTrackGeometry.speedColoredSlices(
+                gpsSegments: RideTrackGeometry.segments(from: points.map(\.clLocation))
+            )
+        } else {
+            slices = []
+        }
+        coordinateCache.speedSlices = slices
+        return slices
+    }
+
     // MARK: - Вложенный тип координаты
 
     struct Coordinate: Codable {
@@ -99,12 +118,20 @@ final class Ride {
         let longitude: Double
         var altitude: Double?
         var timestamp: TimeInterval?
+        /// Meters per second when GPS reported a valid speed.
+        var speed: Double?
 
-        init(_ location: CLLocationCoordinate2D, altitude: Double? = nil, timestamp: TimeInterval? = nil) {
+        init(
+            _ location: CLLocationCoordinate2D,
+            altitude: Double? = nil,
+            timestamp: TimeInterval? = nil,
+            speed: Double? = nil
+        ) {
             self.latitude = location.latitude
             self.longitude = location.longitude
             self.altitude = altitude
             self.timestamp = timestamp
+            self.speed = speed
         }
 
         init(_ location: CLLocation) {
@@ -116,10 +143,23 @@ final class Ride {
                 self.altitude = nil
             }
             self.timestamp = location.timestamp.timeIntervalSince1970
+            self.speed = location.speed >= 0 ? location.speed : nil
         }
 
         var clLocationCoordinate2D: CLLocationCoordinate2D {
             CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        }
+
+        var clLocation: CLLocation {
+            CLLocation(
+                coordinate: clLocationCoordinate2D,
+                altitude: altitude ?? 0,
+                horizontalAccuracy: 15,
+                verticalAccuracy: altitude == nil ? -1 : 10,
+                course: -1,
+                speed: speed ?? -1,
+                timestamp: timestamp.map { Date(timeIntervalSince1970: $0) } ?? .distantPast
+            )
         }
     }
 
@@ -209,4 +249,5 @@ private final class RideCoordinateCache {
     var route: [Ride.Coordinate]?
     var matched: [Ride.Coordinate]?
     var displaySegments: [[CLLocationCoordinate2D]]?
+    var speedSlices: [SpeedColoredSlice]?
 }

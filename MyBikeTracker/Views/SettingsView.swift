@@ -19,9 +19,40 @@ struct SettingsView: View {
     @AppStorage(PreferenceKey.autoPauseSpeedKmh) private var autoPauseSpeedKmh = 1.0
     @AppStorage(PreferenceKey.autoPauseDelaySeconds) private var autoPauseDelaySeconds = 5.0
 
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(version) (\(build))"
+    }
+
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Brand.Color.trail.gradient)
+                                .frame(width: 52, height: 52)
+                            Image(systemName: "figure.outdoor.cycle")
+                                .font(.title2.weight(.semibold))
+                                .foregroundStyle(.white)
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(Brand.name)
+                                .font(Brand.Font.headline)
+                                .foregroundStyle(Brand.Color.ink)
+                            Text(LocalizedStringKey("brand_tagline"))
+                                .font(Brand.Font.micro)
+                                .foregroundStyle(Brand.Color.muted)
+                            Text(appVersion)
+                                .font(Brand.Font.micro)
+                                .foregroundStyle(Brand.Color.muted.opacity(0.8))
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 Section {
                     Picker(LocalizedStringKey("units_section"), selection: $unitSystemRaw) {
                         Text(LocalizedStringKey("units_metric")).tag(DistanceUnitSystem.metric.rawValue)
@@ -40,6 +71,7 @@ struct SettingsView: View {
                 Section {
                     Stepper(value: $weeklyGoalKilometers, in: 5...500, step: 5) {
                         Text(RideFormatters.distance(meters: weeklyGoalKilometers * 1000))
+                            .font(Brand.Font.metric(18))
                     }
                 } header: {
                     Text(LocalizedStringKey("weekly_goal_setting"))
@@ -49,16 +81,18 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(LocalizedStringKey("autopause_speed"))
                         Slider(value: $autoPauseSpeedKmh, in: 0.5...5, step: 0.5)
+                            .tint(Brand.Color.trail)
                         Text(RideFormatters.speed(kmh: autoPauseSpeedKmh))
                             .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Brand.Color.muted)
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         Text(LocalizedStringKey("autopause_delay"))
                         Slider(value: $autoPauseDelaySeconds, in: 3...20, step: 1)
+                            .tint(Brand.Color.trail)
                         Text(String(format: NSLocalizedString("autopause_delay_value", comment: ""), Int(autoPauseDelaySeconds)))
                             .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Brand.Color.muted)
                     }
                 } header: {
                     Text(LocalizedStringKey("autopause_section"))
@@ -93,11 +127,11 @@ struct SettingsView: View {
                     Text(LocalizedStringKey("route_color_footer"))
                 }
 
-                // MARK: - Apple Health
                 Section(header: Text(LocalizedStringKey("healthkit_section"))) {
                     Toggle(LocalizedStringKey("healthkit_toggle"), isOn: $healthKitEnabled)
+                        .tint(Brand.Color.trail)
                 }
-                // MARK: - Импорт / Экспорт
+
                 RideImportExportSection(ridesViewModel: ridesViewModel)
 
                 #if DEBUG
@@ -107,6 +141,7 @@ struct SettingsView: View {
                 )
                 #endif
             }
+            .brandListChrome()
             .navigationTitle(LocalizedStringKey("settings_tab_title"))
             .onAppear {
                 UnitPreferences.set(DistanceUnitSystem(rawValue: unitSystemRaw) ?? .metric)

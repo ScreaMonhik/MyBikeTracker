@@ -121,4 +121,120 @@ enum RideTrackGeometry {
         }
         return result
     }
+
+    /// Speed-colored pieces of the live GPS track, including road-fill connectors.
+    static func speedColoredSlices(
+        gpsSegments: [[CLLocation]],
+        fills: [String: [CLLocationCoordinate2D]] = [:]
+    ) -> [SpeedColoredSlice] {
+        var builder = SpeedSliceBuilder()
+        for (index, segment) in gpsSegments.enumerated() {
+            appendGPSSegment(segment, into: &builder)
+            guard index + 1 < gpsSegments.count,
+                  let start = segment.last,
+                  let end = gpsSegments[index + 1].first,
+                  let fill = fills[gapKey(from: start, to: end)],
+                  fill.count > 1 else { continue }
+            let duration = end.timestamp.timeIntervalSince(start.timestamp)
+            let distance = polylineDistance(fill)
+            let kmh: Double
+            if duration > 0.5 {
+                kmh = (distance / duration) * 3.6
+            } else {
+                kmh = speedKmh(from: start, to: end)
+            }
+            builder.append(coordinates: fill, speedKmh: kmh)
+        }
+        return builder.finish()
+    }
+
+    static func speedKmh(from start: CLLocation, to end: CLLocation) -> Double {
+        let samples = [start.speed, end.speed].filter { $0 >= 0 }
+        if !samples.isEmpty {
+            return samples.reduce(0, +) / Double(samples.count) * 3.6
+        }
+        let duration = end.timestamp.timeIntervalSince(start.timestamp)
+        guard duration > 0.2 else { return 0 }
+        return (end.distance(from: start) / duration) * 3.6
+    }
+
+    private static func appendGPSSegment(_ segment: [CLLocation], into builder: inout SpeedSliceBuilder) {
+        guard segment.count > 1 else { return }
+        for index in 1..<segment.count {
+            let start = segment[index - 1]
+            let end = segment[index]
+            builder.append(
+                coordinates: [start.coordinate, end.coordinate],
+                speedKmh: speedKmh(from: start, to: end)
+            )
+        }
+    }
+}
+
+private struct SpeedSliceBuilder {
+    private var slices: [SpeedColoredSlice] = []
+    private var current: [CLLocationCoordinate2D] = []
+    private var currentBand: Int?
+    private var speedSum = 0.0
+    private var speedCount = 0
+
+    mutating func append(coordinates: [CLLocationCoordinate2D], speedKmh: Double) {
+        guard coordinates.count >= 2 else { return }
+        let band = SpeedHeatmap.band(forKmh: speedKmh)
+        if currentBand == band, let last = current.last {
+            if sameCoordinate(coordinates[0], last) {
+                current.append(contentsOf: coordinates.dropFirst())
+            } else {
+                current.append(contentsOf: coordinates)
+            }
+            speedSum += speedKmh
+            speedCount += 1
+            return
+        }
+        flush()
+        current = coordinates
+        currentBand = band
+        speedSum = speedKmh
+        speedCount = 1
+    }
+
+    mutating func finish() -> [SpeedColoredSlice] {
+        flush()
+        return slices
+    }
+
+    private mutating func flush() {
+        defer {
+            current = []
+            currentBand = nil
+            speedSum = 0
+            speedCount = 0
+        }
+        guard current.count > 1, speedCount > 0, let band = currentBand else { return }
+        slices.append(
+            SpeedColoredSlice(
+                id: sliceID(coordinates: current, band: band),
+                coordinates: current,
+                speedKmh: speedSum / Double(speedCount)
+            )
+        )
+    }
+
+    private func sliceID(coordinates: [CLLocationCoordinate2D], band: Int) -> String {
+        guard coordinates.count >= 2 else { return "empty-\(band)" }
+        let first = coordinates[0]
+        let second = coordinates[1]
+        return String(
+            format: "%.5f,%.5f,%.5f,%.5f,%d",
+            first.latitude,
+            first.longitude,
+            second.latitude,
+            second.longitude,
+            band
+        )
+    }
+
+    private func sameCoordinate(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
+        abs(a.latitude - b.latitude) < 1e-9 && abs(a.longitude - b.longitude) < 1e-9
+    }
 }

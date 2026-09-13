@@ -65,8 +65,11 @@ final class LocationService: NSObject, ObservableObject {
     private var simulationTimer: Timer?
     private var simulationPath: [CLLocationCoordinate2D] = []
     private var simulationIndex = 0
+    private var simulationDistance = 0.0
+    private var simulationPathLength = 0.0
+    private var simulationCumulative: [Double] = []
     private var simulationGeneration = 0
-    /// One point per second; spacing on the path matches this so distance ≈ speed × time.
+    /// Typical cruise used to resample the road loop; live ticks then vary around it.
     private let simulatedSpeedMps: Double = 5.5
     private let simulatedTick: TimeInterval = 1
 
@@ -86,6 +89,9 @@ final class LocationService: NSObject, ObservableObject {
         isRecording = true
         simulationPath = []
         simulationIndex = 0
+        simulationDistance = 0
+        simulationPathLength = 0
+        simulationCumulative = []
 
         let center = origin
             ?? currentLocation?.coordinate
@@ -100,6 +106,7 @@ final class LocationService: NSObject, ObservableObject {
             await MainActor.run {
                 guard let self, self.simulationGeneration == generation, self.isSimulatingRide else { return }
                 self.simulationPath = roadPath
+                self.prepareSimulationPathMetrics()
                 guard !self.simulationPath.isEmpty else { return }
                 self.emitSimulationTick()
                 self.emitSimulationTick()
@@ -117,6 +124,9 @@ final class LocationService: NSObject, ObservableObject {
         isSimulatingRide = false
         simulationPath = []
         simulationIndex = 0
+        simulationDistance = 0
+        simulationPathLength = 0
+        simulationCumulative = []
     }
 
     func pauseRideSimulationClock() {
@@ -139,12 +149,14 @@ final class LocationService: NSObject, ObservableObject {
 
     private func emitSimulationTick() {
         guard !simulationPath.isEmpty else { return }
-        let current = simulationPath[simulationIndex % simulationPath.count]
-        let next = simulationPath[(simulationIndex + 1) % simulationPath.count]
+        let speed = simulatedSpeed(at: simulationDistance)
+        let current = coordinateOnSimulationPath(at: simulationDistance)
+        let lookAhead = max(speed * simulatedTick, 2)
+        let next = coordinateOnSimulationPath(at: simulationDistance + lookAhead)
         let from = CLLocation(latitude: current.latitude, longitude: current.longitude)
         let to = CLLocation(latitude: next.latitude, longitude: next.longitude)
         let course = from.course(to: to)
-        let altitude = 168 + 8 * sin(Double(simulationIndex) * 0.09)
+        let altitude = 168 + 8 * sin(simulationDistance * 0.018)
 
         let location = CLLocation(
             coordinate: current,
@@ -152,11 +164,66 @@ final class LocationService: NSObject, ObservableObject {
             horizontalAccuracy: 4,
             verticalAccuracy: 3,
             course: course,
-            speed: simulatedSpeedMps,
+            speed: speed,
             timestamp: Date()
         )
         acceptSimulatedLocation(location)
+        simulationDistance += speed * simulatedTick
+        if simulationPathLength > 0 {
+            simulationDistance = simulationDistance.truncatingRemainder(dividingBy: simulationPathLength)
+        }
         simulationIndex += 1
+    }
+
+    /// ~13–36 km/h so the live heatmap actually changes color.
+    private func simulatedSpeed(at distance: Double) -> Double {
+        let wander = 0.5 + 0.5 * sin(distance / 42)
+        let sprint = max(0, sin(distance / 110))
+        return 3.6 + 4.8 * wander + 2.8 * sprint
+    }
+
+    private func prepareSimulationPathMetrics() {
+        simulationDistance = 0
+        simulationCumulative = [0]
+        var total = 0.0
+        guard simulationPath.count >= 2 else {
+            simulationPathLength = 0
+            return
+        }
+        let first = simulationPath[0]
+        let last = simulationPath[simulationPath.count - 1]
+        let closedGap = CLLocation(latitude: last.latitude, longitude: last.longitude)
+            .distance(from: CLLocation(latitude: first.latitude, longitude: first.longitude))
+        let isClosed = closedGap < 2
+        let segmentCount = isClosed ? simulationPath.count - 1 : simulationPath.count
+        for index in 0..<segmentCount {
+            let start = simulationPath[index]
+            let end = simulationPath[(index + 1) % simulationPath.count]
+            let from = CLLocation(latitude: start.latitude, longitude: start.longitude)
+            let to = CLLocation(latitude: end.latitude, longitude: end.longitude)
+            total += to.distance(from: from)
+            simulationCumulative.append(total)
+        }
+        simulationPathLength = max(total, 0)
+    }
+
+    private func coordinateOnSimulationPath(at distance: Double) -> CLLocationCoordinate2D {
+        guard simulationPath.count >= 2, simulationPathLength > 0, simulationCumulative.count >= 2 else {
+            return simulationPath.first ?? CLLocationCoordinate2D()
+        }
+        let target = distance.truncatingRemainder(dividingBy: simulationPathLength)
+        var index = 0
+        while index + 1 < simulationCumulative.count, simulationCumulative[index + 1] < target {
+            index += 1
+        }
+        let start = simulationPath[index % simulationPath.count]
+        let end = simulationPath[(index + 1) % simulationPath.count]
+        let span = simulationCumulative[min(index + 1, simulationCumulative.count - 1)] - simulationCumulative[index]
+        let fraction = span > 0 ? (target - simulationCumulative[index]) / span : 0
+        return CLLocationCoordinate2D(
+            latitude: start.latitude + (end.latitude - start.latitude) * fraction,
+            longitude: start.longitude + (end.longitude - start.longitude) * fraction
+        )
     }
 
     /// Simulated points always record; the 5 m GPS filter is not applied.

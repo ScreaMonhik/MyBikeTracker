@@ -12,6 +12,7 @@ struct RideDayDetailView: View {
     let rides: [Ride]
     @ObservedObject var ridesViewModel: RidesViewModel
     @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
+    @State private var openedRideID: UUID?
 
     private var sortedRides: [Ride] {
         rides.sorted { $0.startDate < $1.startDate }
@@ -30,34 +31,52 @@ struct RideDayDetailView: View {
     }
 
     var body: some View {
-        Group {
+        List {
+            if !rides.isEmpty {
+                Section {
+                    daySummary
+                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+            }
+
+            DayJournalSection(ridesViewModel: ridesViewModel, date: date)
+
             if rides.isEmpty {
-                List {
-                    DayJournalSection(ridesViewModel: ridesViewModel, date: date)
-                    emptyState
+                Section {
+                    BrandEmptyState(
+                        title: LocalizedStringKey("calendar_no_rides_day"),
+                        message: LocalizedStringKey("calendar_no_rides_day_message")
+                    )
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
             } else {
-                List {
-                    Section {
-                        daySummary
-                    }
-
-                    DayJournalSection(ridesViewModel: ridesViewModel, date: date)
-
-                    Section {
-                        ForEach(sortedRides) { ride in
-                            NavigationLink {
-                                RideDetailView(
-                                    ridesViewModel: ridesViewModel,
-                                    ride: ride,
-                                    bikeName: ridesViewModel.bike(for: ride)?.name
-                                )
-                            } label: {
-                                RideRowView(ride: ride, showsDate: false)
-                            }
+                Section {
+                    ForEach(sortedRides) { ride in
+                        Button {
+                            openedRideID = ride.id
+                        } label: {
+                            RideRowView(ride: ride, showsDate: false)
                         }
+                        .buttonStyle(BrandCardButtonStyle())
+                        .brandListCard()
                     }
                 }
+            }
+        }
+        .listStyle(.plain)
+        .brandListChrome()
+        .brandListGutter()
+        .navigationDestination(item: $openedRideID) { rideID in
+            if let ride = ridesViewModel.rides.first(where: { $0.id == rideID })
+                ?? sortedRides.first(where: { $0.id == rideID }) {
+                RideDetailView(
+                    ridesViewModel: ridesViewModel,
+                    ride: ride,
+                    bikeName: ridesViewModel.bike(for: ride)?.name
+                )
             }
         }
         .navigationTitle(date.formatted(.dateTime.weekday(.wide).month(.wide).day()))
@@ -65,48 +84,36 @@ struct RideDayDetailView: View {
     }
 
     private var daySummary: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        BrandCard {
             Text(String.localizedStringWithFormat(
                 NSLocalizedString("calendar_rides_count", comment: ""),
                 Int64(rides.count)
             ))
-            .font(.headline)
+            .font(Brand.Font.headline)
+            .foregroundStyle(Brand.Color.ink)
 
-            HStack(spacing: 16) {
-                labeledValue(
-                    LocalizedStringKey("distance_title"),
-                    RideFormatters.distance(meters: totalDistance)
+            HStack(spacing: 12) {
+                BrandMetric(
+                    title: LocalizedStringKey("distance_title"),
+                    value: RideFormatters.distance(meters: totalDistance),
+                    size: 18,
+                    alignment: .leading
                 )
-                labeledValue(
-                    LocalizedStringKey("duration_title"),
-                    totalDuration.formattedAsTimer
+                BrandMetric(
+                    title: LocalizedStringKey("duration_title"),
+                    value: totalDuration.formattedAsTimer,
+                    size: 18,
+                    alignment: .leading
                 )
                 if totalElevation > 0 {
-                    labeledValue(
-                        LocalizedStringKey("elevation_title"),
-                        RideFormatters.elevation(meters: totalElevation)
+                    BrandMetric(
+                        title: LocalizedStringKey("elevation_title"),
+                        value: RideFormatters.elevation(meters: totalElevation),
+                        size: 18,
+                        alignment: .leading
                     )
                 }
             }
         }
-        .padding(.vertical, 4)
-    }
-
-    private func labeledValue(_ title: LocalizedStringKey, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-        }
-    }
-
-    private var emptyState: some View {
-        ContentUnavailableView(
-            LocalizedStringKey("calendar_no_rides_day"),
-            systemImage: "bicycle",
-            description: Text(LocalizedStringKey("calendar_no_rides_day_message"))
-        )
     }
 }

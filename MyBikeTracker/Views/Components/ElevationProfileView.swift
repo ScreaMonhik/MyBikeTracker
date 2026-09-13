@@ -8,20 +8,21 @@ struct ElevationProfileView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(LocalizedStringKey("elevation_profile_title"))
-                .font(.subheadline.weight(.semibold))
+                .font(Brand.Font.headline)
+                .foregroundStyle(Brand.Color.ink)
 
             Chart(samples) { sample in
                 AreaMark(
                     x: .value("Distance", sample.distance),
                     y: .value("Altitude", displayAltitude(sample.altitude))
                 )
-                .foregroundStyle(Color.accentColor.opacity(0.22))
+                .foregroundStyle(Brand.Color.trail.opacity(0.22))
                 LineMark(
                     x: .value("Distance", sample.distance),
                     y: .value("Altitude", displayAltitude(sample.altitude))
                 )
-                .foregroundStyle(Color.accentColor)
-                .lineStyle(StrokeStyle(lineWidth: 2))
+                .foregroundStyle(Brand.Color.trail)
+                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
             }
             .chartXAxis {
                 AxisMarks { value in
