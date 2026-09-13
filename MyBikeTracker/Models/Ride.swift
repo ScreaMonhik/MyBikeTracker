@@ -258,11 +258,12 @@ final class Ride {
 
     var hasCustomLineColor: Bool { lineColorHex != nil }
 
-    /// Speed heatmap unless this ride has a custom solid color.
-    var usesSpeedHeatmapLine: Bool {
-        guard !hasCustomLineColor else { return false }
-        return speedColoredSlices.contains { $0.coordinates.count > 1 }
+    var hasSpeedHeatmapData: Bool {
+        speedColoredSlices.contains { $0.coordinates.count > 1 }
     }
+
+    /// Ride detail always prefers a speed heatmap when GPS speeds exist.
+    var usesSpeedHeatmapLine: Bool { hasSpeedHeatmapData }
 }
 
 /// Decoded-route cache that is not itself an observed @Model property.

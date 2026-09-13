@@ -19,7 +19,6 @@ struct TrackerView: View {
         _sensorService = ObservedObject(wrappedValue: viewModel.sensorService)
     }
 
-    @AppStorage(.trackerRouteColorKey) private var trackerColorHex: String = RouteLineColor.defaultTrackerHex
     @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
     @AppStorage(PreferenceKey.selectedBikeId) private var selectedBikeId = ""
 
@@ -50,9 +49,12 @@ struct TrackerView: View {
                 Spacer(minLength: 0)
 
                 HStack(alignment: .bottom) {
-                    if isRideActive, !viewModel.liveSpeedSlices.isEmpty {
-                        SpeedTrackLegend()
-                            .transition(.move(edge: .leading).combined(with: .opacity))
+                    if isRideActive {
+                        SpeedTrackLegend(
+                            currentSpeedKmh: viewModel.currentSpeed,
+                            scale: viewModel.livePaceScale
+                        )
+                        .transition(.move(edge: .leading).combined(with: .opacity))
                     }
                     Spacer()
                     mapTools
@@ -88,7 +90,7 @@ struct TrackerView: View {
         }
         .animation(Brand.Motion.appear(reduceMotion: reduceMotion), value: isRideActive)
         .animation(Brand.Motion.snappy(reduceMotion: reduceMotion), value: viewModel.isPaused)
-        .animation(Brand.Motion.snappy(reduceMotion: reduceMotion), value: viewModel.liveSpeedSlices.isEmpty)
+        .animation(Brand.Motion.snappy(reduceMotion: reduceMotion), value: viewModel.shouldAutoCenter)
         .sheet(isPresented: $isShowingSearchSheet) {
             AddressSearchView(viewModel: viewModel)
         }
@@ -103,13 +105,19 @@ struct TrackerView: View {
             liveCoordinates: viewModel.routeCoordinates,
             liveSegments: viewModel.routeSegments,
             liveSpeedSlices: viewModel.liveSpeedSlices,
-            lineColor: RouteLineColor.uiColor(from: trackerColorHex, fallbackHex: RouteLineColor.defaultTrackerHex),
+            lineColor: RouteLineColor.uiColor(from: RouteLineColor.defaultTrackerHex),
             viewModel: viewModel
         )
         .ignoresSafeArea(edges: [.top, .horizontal])
         .onAppear {
             viewModel.locationService.prepareForForegroundMap()
             viewModel.forceAutoCenter()
+        }
+        .onChange(of: selectedBikeId) { _, _ in
+            viewModel.recolorLiveTrack()
+        }
+        .onChange(of: viewModel.ridesViewModel?.routeStyleRevision ?? 0) { _, _ in
+            viewModel.recolorLiveTrack()
         }
     }
 
@@ -249,7 +257,9 @@ struct TrackerView: View {
 
                 GlassMapButton(
                     systemImage: viewModel.shouldAutoCenter ? "location.fill" : "location",
-                    accessibilityKey: LocalizedStringKey("center_map_title")
+                    accessibilityKey: viewModel.shouldAutoCenter
+                        ? LocalizedStringKey("follow_rider_title")
+                        : LocalizedStringKey("center_map_title")
                 ) {
                     viewModel.forceAutoCenter()
                 }

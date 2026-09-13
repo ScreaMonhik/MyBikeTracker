@@ -83,6 +83,12 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
     /// Текущий регион карты (используется для контроля позиции камеры)
     @Published var currentRegion: MKCoordinateRegion?
 
+    /// How far the camera center last sat from the rider — used to detect a user pull-away.
+    private var lastCameraOffsetFromRider: CLLocationDistance?
+
+    /// Latest camera region from the map. Not published — continuous frames must not refresh SwiftUI.
+    private var visibleRegion: MKCoordinateRegion?
+
     /// App GPS / simulation fix used for the rider puck (not MapKit's system user location).
     @Published private(set) var displayCoordinate: CLLocationCoordinate2D?
     @Published private(set) var displayCourse: CLLocationDirection = -1
@@ -192,6 +198,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         let defaultRegion = MKCoordinateRegion(center: defaultLocation,
                                                span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
         self.currentRegion = defaultRegion
+        self.visibleRegion = defaultRegion
         self.cameraPosition = .region(defaultRegion)
 
         searchCompleter.delegate = self
@@ -229,6 +236,14 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         requestGapFills(for: gpsSegments)
         routeSegments = RideTrackGeometry.stitchedDisplay(gpsSegments: gpsSegments, fills: gapFills)
         liveSpeedSlices = RideTrackGeometry.speedColoredSlices(gpsSegments: gpsSegments, fills: gapFills)
+    }
+
+    var livePaceScale: PaceScale {
+        ridesViewModel?.paceScale(forSelectedBikeId: selectedBikeId) ?? .default
+    }
+
+    func recolorLiveTrack() {
+        updateLiveTrack(from: locationService.recordedLocations)
     }
 
     private func requestGapFills(for segments: [[CLLocation]]) {
@@ -275,15 +290,15 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             }
         }
 
+        checkRerouting(currentLocation: location)
+
         guard shouldAutoCenter else { return }
 
-        let region = MKCoordinateRegion(
-            center: location.coordinate,
-            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-        )
+        let span = visibleRegion?.span ?? currentRegion?.span ?? MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        let region = MKCoordinateRegion(center: location.coordinate, span: span)
 
         // Центрируем карту только если расстояние сдвига больше 5 метров
-        if let currentCenter = currentRegion?.center {
+        if let currentCenter = visibleRegion?.center ?? currentRegion?.center {
             let distance = CLLocation(latitude: currentCenter.latitude, longitude: currentCenter.longitude)
                 .distance(from: CLLocation(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude))
             if distance > 5 {
@@ -292,40 +307,86 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         } else {
             updateCameraRegion(to: region)
         }
-
-        checkRerouting(currentLocation: location)
     }
 
     /// Обновляет камеру карты программно
     private func updateCameraRegion(to region: MKCoordinateRegion) {
+        guard shouldAutoCenter else { return }
         isProgrammaticRegionChange = true
         cameraPosition = .region(region)
         currentRegion = region
-
-        // Снимаем флаг программного изменения спустя короткую задержку
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.isProgrammaticRegionChange = false
-        }
+        visibleRegion = region
     }
 
     // MARK: - Автоцентрирование карты
 
     /// Принудительно включает автоцентрирование и обновляет позицию камеры
-    func forceAutoCenter() {
+    func forceAutoCenter(resetSpan: Bool = false) {
         shouldAutoCenter = true
-        if let location = locationService.currentLocation {
-            let region = MKCoordinateRegion(center: location.coordinate,
-                                            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01))
-            updateCameraRegion(to: region)
+        lastCameraOffsetFromRider = nil
+        guard let location = locationService.currentLocation else { return }
+        let span: MKCoordinateSpan
+        if resetSpan {
+            span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        } else {
+            span = visibleRegion?.span ?? currentRegion?.span ?? MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        }
+        updateCameraRegion(to: MKCoordinateRegion(center: location.coordinate, span: span))
+    }
+
+    /// User started panning the map to look ahead — stop chasing the rider.
+    func breakAutoCenterFromUserInteraction() {
+        guard shouldAutoCenter else { return }
+        shouldAutoCenter = false
+        isProgrammaticRegionChange = false
+    }
+
+    /// Continuous camera frames: if the user pulls the map off the rider, drop follow immediately.
+    func handleLiveCameraRegion(_ region: MKCoordinateRegion) {
+        visibleRegion = region
+        guard shouldAutoCenter else { return }
+        guard let rider = riderCoordinateForFollow else {
+            lastCameraOffsetFromRider = nil
+            return
+        }
+
+        let offset = Self.distance(from: region.center, to: rider)
+        let previous = lastCameraOffsetFromRider
+        lastCameraOffsetFromRider = offset
+        guard let previous else { return }
+
+        let pulledAway = offset > previous + 20
+        if offset > 45, pulledAway {
+            shouldAutoCenter = false
+            isProgrammaticRegionChange = false
+        }
+    }
+
+    /// Camera animation finished. Only clears the programmatic flag — follow is broken by a pan or pull-away.
+    func handleCameraIdle(_ region: MKCoordinateRegion) {
+        visibleRegion = region
+        currentRegion = region
+        isProgrammaticRegionChange = false
+        if let rider = riderCoordinateForFollow {
+            lastCameraOffsetFromRider = Self.distance(from: region.center, to: rider)
         }
     }
 
     /// Отключает автоцентрирование и обновляет регион карты при ручном перемещении
     func notifyManualRegionChange(to region: MKCoordinateRegion) {
         isProgrammaticRegionChange = false
-        cameraPosition = .region(region)
+        visibleRegion = region
         currentRegion = region
         shouldAutoCenter = false
+    }
+
+    private var riderCoordinateForFollow: CLLocationCoordinate2D? {
+        displayCoordinate ?? locationService.currentLocation?.coordinate
+    }
+
+    private static func distance(from a: CLLocationCoordinate2D, to b: CLLocationCoordinate2D) -> CLLocationDistance {
+        CLLocation(latitude: a.latitude, longitude: a.longitude)
+            .distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude))
     }
 
     // MARK: - Navigation / Routing Logic
@@ -456,7 +517,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
         // Центрируем карту сразу при старте
         if locationService.currentLocation != nil {
-            forceAutoCenter()
+            forceAutoCenter(resetSpan: true)
         }
 
         // Запрашиваем права HealthKit при каждом старте (безопасно — система кешируем решение пользователя)

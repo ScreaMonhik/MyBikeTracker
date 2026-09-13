@@ -350,6 +350,29 @@
         }
       }
     },
+    "follow_rider_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Following rider"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Райдер в центре"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Райдер у центрі"
+          }
+        }
+      }
+    },
     "clear_route_title": {
       "extractionState": "manual",
       "localizations": {
@@ -495,19 +518,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The live ride line is colored by speed — teal is slow, ember is fast. The color below tints the rider marker. Finished rides use the same speed colors on the Map tab unless you pick a custom color — tap the line on Map or open the ride in History."
+            "value": "Older rides on the Map tab use this color, unless a ride has its own color. The latest ride — or any ride you tap — is shown as a speed heatmap."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Линия активной поездки окрашивается по скорости: бирюзовый — медленно, оранжевый — быстро. Цвет ниже задаёт маркер райдера. Завершённые поездки на вкладке «Карта» тоже красятся по скорости, пока вы не зададите свой цвет линии — нажатием на линию или в истории."
+            "value": "Цвет линий прошлых поездок на вкладке «Карта», если у поездки нет своего цвета. Последняя поездка — или та, по которой вы тапнули — показывается тепловой картой темпа."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Лінія активної поїздки забарвлюється за швидкістю: бірюзовий — повільно, помаранчевий — швидко. Колір нижче задає маркер райдера. Завершені поїздки на вкладці «Карта» також фарбуються за швидкістю, доки ви не задасте свій колір лінії — натисканням на лінію або в історії."
+            "value": "Колір ліній минулих поїздок на вкладці «Карта», якщо в поїздки немає свого кольору. Остання поїздка — або та, яку ви торкнулися — показується тепловою картою темпу."
           }
         }
       }
@@ -2864,6 +2887,167 @@
           "stringUnit": {
             "state": "translated",
             "value": "Обрати велосипед"
+          }
+        }
+      }
+    },
+    "garage_pace_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace levels"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уровни темпа"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рівні темпу"
+          }
+        }
+      }
+    },
+    "garage_pace_slow_max": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slow below"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Медленно ниже"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повільно нижче"
+          }
+        }
+      }
+    },
+    "garage_pace_medium_max": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medium below"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Средне ниже"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Середньо нижче"
+          }
+        }
+      }
+    },
+    "garage_pace_fast_from": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fast from"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Быстро от"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Швидко від"
+          }
+        }
+      }
+    },
+    "garage_pace_footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These speeds color this bike’s ride heatmap on Map, Ride, and the live track. Slow is teal, medium is amber, fast is ember."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эти пороги красят тепловую карту поездок на этом велосипеде — на карте, в деталях и на живом треке. Медленно — бирюзовый, средне — янтарный, быстро — оранжевый."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ці пороги фарбують теплову карту поїздок на цьому велосипеді — на карті, в деталях і на живому треку. Повільно — бірюзовий, середньо — бурштиновий, швидко — помаранчевий."
+          }
+        }
+      }
+    },
+    "speed_legend_medium": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medium"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Средне"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Середньо"
+          }
+        }
+      }
+    },
+    "ride_pace_legend_accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How much of this ride was slow, medium, and fast."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Какая доля этой поездки была медленной, средней и быстрой."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Яка частка цієї поїздки була повільною, середньою і швидкою."
           }
         }
       }

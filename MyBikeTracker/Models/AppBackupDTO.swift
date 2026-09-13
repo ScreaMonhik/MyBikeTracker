@@ -15,6 +15,8 @@ struct BikeExportDTO: Codable {
     var chainIntervalMeters: Double
     var metersAtLastChainService: Double
     var createdAt: Date
+    var paceSlowMaxKmh: Double?
+    var paceMediumMaxKmh: Double?
 
     init(bike: Bike) {
         id = bike.id
@@ -23,6 +25,8 @@ struct BikeExportDTO: Codable {
         chainIntervalMeters = bike.chainIntervalMeters
         metersAtLastChainService = bike.metersAtLastChainService
         createdAt = bike.createdAt
+        paceSlowMaxKmh = bike.paceSlowMaxKmh
+        paceMediumMaxKmh = bike.paceMediumMaxKmh
     }
 }
 

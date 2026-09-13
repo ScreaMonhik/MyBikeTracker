@@ -160,6 +160,23 @@ final class RidesViewModel: ObservableObject {
         save()
     }
 
+    func updateBikePace(_ bike: Bike, slowMaxKmh: Double, mediumMaxKmh: Double) {
+        let scale = PaceScale(slowMaxKmh: slowMaxKmh, mediumMaxKmh: mediumMaxKmh).sanitized
+        bike.paceSlowMaxKmh = scale.slowMaxKmh
+        bike.paceMediumMaxKmh = scale.mediumMaxKmh
+        save()
+        routeStyleRevision += 1
+    }
+
+    func paceScale(for ride: Ride) -> PaceScale {
+        bike(for: ride)?.paceScale ?? .default
+    }
+
+    func paceScale(forSelectedBikeId selectedBikeId: String) -> PaceScale {
+        guard let id = UUID(uuidString: selectedBikeId) else { return .default }
+        return bikes.first { $0.id == id }?.paceScale ?? .default
+    }
+
     func applyOdometer(bikeId: UUID, delta: Double) {
         guard let bike = bikes.first(where: { $0.id == bikeId }) else { return }
         bike.odometerMeters = max(0, bike.odometerMeters + delta)
@@ -321,7 +338,9 @@ final class RidesViewModel: ObservableObject {
                 name: dto.name,
                 odometerMeters: dto.odometerMeters,
                 chainIntervalMeters: dto.chainIntervalMeters,
-                metersAtLastChainService: dto.metersAtLastChainService
+                metersAtLastChainService: dto.metersAtLastChainService,
+                paceSlowMaxKmh: dto.paceSlowMaxKmh ?? PaceScale.default.slowMaxKmh,
+                paceMediumMaxKmh: dto.paceMediumMaxKmh ?? PaceScale.default.mediumMaxKmh
             )
             bike.id = dto.id
             bike.createdAt = dto.createdAt

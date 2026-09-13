@@ -18,13 +18,14 @@ struct RideDetailView: View {
 
     var body: some View {
         let rideColor = ride.resolvedLineColor(defaultHex: historyColorHex)
+        let paceScale = ridesViewModel.paceScale(for: ride)
         let usesSpeedHeatmap = ride.usesSpeedHeatmapLine
         let _ = ridesViewModel.routeStyleRevision
         ScrollView {
             VStack(spacing: 16) {
                 Map {
                     if usesSpeedHeatmap {
-                        speedTrackMapContent(slices: ride.speedColoredSlices)
+                        speedTrackMapContent(slices: ride.speedColoredSlices, scale: paceScale)
                     } else {
                         ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
                             if coords.count > 1 {
@@ -47,22 +48,11 @@ struct RideDetailView: View {
                 .padding(.top, 8)
 
                 if usesSpeedHeatmap {
-                    HStack(spacing: 8) {
-                        Text(LocalizedStringKey("speed_legend_slow"))
-                        LinearGradient(
-                            colors: SpeedHeatmap.legendColors,
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .frame(height: 6)
-                        .clipShape(Capsule())
-                        Text(LocalizedStringKey("speed_legend_fast"))
-                    }
-                    .font(Brand.Font.micro)
-                    .foregroundStyle(Brand.Color.muted)
+                    RidePaceDistributionLegend(
+                        slices: ride.speedColoredSlices,
+                        scale: paceScale
+                    )
                     .padding(.horizontal, 20)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(LocalizedStringKey("speed_legend_accessibility"))
                 }
 
                 BrandCard {

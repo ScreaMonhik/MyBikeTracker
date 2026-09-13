@@ -11,13 +11,23 @@ struct SettingsView: View {
     @ObservedObject var ridesViewModel: RidesViewModel
     @ObservedObject var mapViewModel: MapViewModel
 
-    @AppStorage(.trackerRouteColorKey) private var trackerColorHex: String = RouteLineColor.defaultTrackerHex
     @AppStorage(.historyRouteColorKey) private var historyColorHex: String = RouteLineColor.defaultHistoryHex
     @AppStorage(PreferenceKey.healthKitEnabled) private var healthKitEnabled = true
     @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
     @AppStorage(PreferenceKey.weeklyGoalKilometers) private var weeklyGoalKilometers = 50.0
     @AppStorage(PreferenceKey.autoPauseSpeedKmh) private var autoPauseSpeedKmh = 1.0
     @AppStorage(PreferenceKey.autoPauseDelaySeconds) private var autoPauseDelaySeconds = 5.0
+
+    private var unitSystem: DistanceUnitSystem {
+        DistanceUnitSystem(rawValue: unitSystemRaw) ?? .metric
+    }
+
+    private var weeklyGoalBinding: Binding<Double> {
+        Binding(
+            get: { RideFormatters.weeklyGoalDisplay(kilometers: weeklyGoalKilometers, system: unitSystem) },
+            set: { weeklyGoalKilometers = RideFormatters.weeklyGoalKilometers(fromDisplay: $0, system: unitSystem) }
+        )
+    }
 
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -69,8 +79,8 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Stepper(value: $weeklyGoalKilometers, in: 5...500, step: 5) {
-                        Text(RideFormatters.distance(meters: weeklyGoalKilometers * 1000))
+                    Stepper(value: weeklyGoalBinding, in: 5...500, step: 5) {
+                        Text(RideFormatters.distance(meters: weeklyGoalKilometers * 1000, system: unitSystem))
                             .font(Brand.Font.metric(18))
                     }
                 } header: {
@@ -80,16 +90,14 @@ struct SettingsView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(LocalizedStringKey("autopause_speed"))
-                        Slider(value: $autoPauseSpeedKmh, in: 0.5...5, step: 0.5)
-                            .tint(Brand.Color.trail)
-                        Text(RideFormatters.speed(kmh: autoPauseSpeedKmh))
+                        ExclusiveSlider(value: $autoPauseSpeedKmh, range: 0.5...5, step: 0.5)
+                        Text(RideFormatters.speed(kmh: autoPauseSpeedKmh, system: unitSystem))
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(Brand.Color.muted)
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         Text(LocalizedStringKey("autopause_delay"))
-                        Slider(value: $autoPauseDelaySeconds, in: 3...20, step: 1)
-                            .tint(Brand.Color.trail)
+                        ExclusiveSlider(value: $autoPauseDelaySeconds, range: 3...20, step: 1)
                         Text(String(format: NSLocalizedString("autopause_delay_value", comment: ""), Int(autoPauseDelaySeconds)))
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(Brand.Color.muted)
@@ -111,11 +119,6 @@ struct SettingsView: View {
                 BluetoothSensorsSection(sensorService: mapViewModel.sensorService)
 
                 Section {
-                    StoredRouteColorPicker(
-                        title: LocalizedStringKey("tracker_route_color"),
-                        hex: $trackerColorHex,
-                        fallbackHex: RouteLineColor.defaultTrackerHex
-                    )
                     StoredRouteColorPicker(
                         title: LocalizedStringKey("history_route_color"),
                         hex: $historyColorHex,
@@ -175,6 +178,7 @@ struct SettingsView: View {
                 #endif
             }
             .brandListChrome()
+            .scrollIndicators(.hidden)
             .navigationTitle(LocalizedStringKey("settings_tab_title"))
             .onAppear {
                 UnitPreferences.set(DistanceUnitSystem(rawValue: unitSystemRaw) ?? .metric)

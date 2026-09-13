@@ -16,8 +16,20 @@ struct HomeMapView: View {
 
     @AppStorage(.historyRouteColorKey) private var historyColorHex: String = RouteLineColor.defaultHistoryHex
 
+    private var heatmapRide: Ride? {
+        if isRidePopupVisible, let ride = ridePopup?.ride {
+            return ride
+        }
+        return ridesViewModel.rides.first
+    }
+
     private var showsSpeedLegend: Bool {
-        ridesViewModel.rides.contains { $0.usesSpeedHeatmapLine }
+        heatmapRide?.hasSpeedHeatmapData == true
+    }
+
+    private var heatmapScale: PaceScale {
+        guard let ride = heatmapRide else { return .default }
+        return ridesViewModel.paceScale(for: ride)
     }
 
     var body: some View {
@@ -46,21 +58,26 @@ struct HomeMapView: View {
                     viewModel.forceAutoCenter()
                 }
             }
-            .overlay(alignment: .top) {
-                HStack(alignment: .top) {
-                    BrandFloatingChip(
-                        title: LocalizedStringKey("map_tab_title"),
-                        systemImage: "map.fill"
-                    )
-                    Spacer()
-                    if viewModel.navigationRoute != nil {
-                        GlassMapButton(
-                            systemImage: "xmark",
-                            accessibilityKey: LocalizedStringKey("clear_route_title")
-                        ) {
-                            viewModel.clearRoute()
+            .overlay(alignment: .topTrailing) {
+                liquidGlassContainer(spacing: 10) {
+                    VStack(spacing: 10) {
+                        if viewModel.navigationRoute != nil {
+                            GlassMapButton(
+                                systemImage: "xmark",
+                                accessibilityKey: LocalizedStringKey("clear_route_title")
+                            ) {
+                                viewModel.clearRoute()
+                            }
+                            .transition(.scale.combined(with: .opacity))
                         }
-                        .transition(.scale.combined(with: .opacity))
+
+                        GlassMapButton(
+                            systemImage: viewModel.shouldAutoCenter ? "location.fill" : "location",
+                            accessibilityKey: LocalizedStringKey("center_map_title")
+                        ) {
+                            viewModel.locationService.prepareForForegroundMap()
+                            viewModel.forceAutoCenter()
+                        }
                     }
                 }
                 .padding(.horizontal, Brand.Space.md)
@@ -69,7 +86,7 @@ struct HomeMapView: View {
             }
             .overlay(alignment: .bottomLeading) {
                 if showsSpeedLegend {
-                    SpeedTrackLegend()
+                    SpeedTrackLegend(scale: heatmapScale)
                         .padding(.leading, Brand.Space.md)
                         .padding(.bottom, BrandTabBar.contentClearance)
                         .transition(.move(edge: .leading).combined(with: .opacity))
