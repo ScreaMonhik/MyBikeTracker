@@ -40,7 +40,7 @@ final class RideTrackGeometryTests: XCTestCase {
         XCTAssertEqual(RideTrackGeometry.segments(from: points).count, 1)
     }
 
-    func testSpeedSlicesBlendALargeJumpIntoAGradient() {
+    func testSpeedSlicesStayConnectedWithUniqueIDs() {
         let start = Date()
         let points = [
             location(lat: 50.45000, lon: 30.5234, at: start, speed: 2),
@@ -48,7 +48,8 @@ final class RideTrackGeometryTests: XCTestCase {
             location(lat: 50.45040, lon: 30.5234, at: start.addingTimeInterval(12), speed: 10)
         ]
         let slices = RideTrackGeometry.speedColoredSlices(gpsSegments: [points])
-        XCTAssertGreaterThan(slices.count, 2)
+        XCTAssertGreaterThanOrEqual(slices.count, 2)
+        XCTAssertEqual(Set(slices.map(\.id)).count, slices.count)
         XCTAssertLessThan(slices.first?.speedKmh ?? 99, 12)
         XCTAssertGreaterThan(slices.last?.speedKmh ?? 0, 16)
         XCTAssertEqual(SpeedTrackOutline.runs(from: slices).count, 1)

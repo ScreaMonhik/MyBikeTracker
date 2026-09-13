@@ -92,9 +92,9 @@ struct SpeedColoredSlice: Identifiable {
 
 /// Brand heatmap: teal is slow, ember / red is fast.
 enum SpeedHeatmap {
-    /// Fine enough that neighbouring GPS edges read as a gradient, not solid blocks.
-    static let bandWidthKmh = 1.0
-    static let maxBand = 80
+    /// Fine enough for a gradient, coarse enough that MapKit is not flooded with overlays.
+    static let bandWidthKmh = 2.0
+    static let maxBand = 40
 
     static func fillFraction(forKmh kmh: Double, scale: PaceScale = .default) -> Double {
         let top = max(scale.scaleMaxKmh, 1)
@@ -200,46 +200,34 @@ enum SpeedTrackOutline {
 func speedTrackMapContent(
     slices: [SpeedColoredSlice],
     scale: PaceScale = .default,
-    lineWidth: CGFloat = 4.5,
+    lineWidth: CGFloat = 6,
     idPrefix: String = ""
 ) -> some MapContent {
-    let tagged = slices.map { slice in
-        SpeedColoredSlice(
-            id: idPrefix.isEmpty ? slice.id : "\(idPrefix)-\(slice.id)",
+    let tagged = slices.enumerated().compactMap { index, slice -> SpeedColoredSlice? in
+        guard slice.coordinates.count > 1 else { return nil }
+        guard RideTrackGeometry.polylineDistance(slice.coordinates) > 0.4 else { return nil }
+        let prefix = idPrefix.isEmpty ? "\(index)" : "\(idPrefix)-\(index)"
+        return SpeedColoredSlice(
+            id: "\(prefix)-\(slice.id)",
             coordinates: slice.coordinates,
             speedKmh: slice.speedKmh
         )
     }
-    return speedTrackPolylines(
-        slices: tagged,
-        runs: SpeedTrackOutline.runs(from: tagged, idPrefix: idPrefix),
-        scale: scale,
-        lineWidth: lineWidth
-    )
+    return speedTrackPolylines(slices: tagged, scale: scale, lineWidth: lineWidth)
 }
 
 @MainActor
 @MapContentBuilder
 private func speedTrackPolylines(
     slices: [SpeedColoredSlice],
-    runs: [SpeedTrackOutlineRun],
     scale: PaceScale,
     lineWidth: CGFloat
 ) -> some MapContent {
-    ForEach(runs) { run in
-        MapPolyline(coordinates: run.coordinates)
-            .stroke(
-                Color.white.opacity(0.9),
-                style: StrokeStyle(lineWidth: lineWidth + 2.5, lineCap: .round, lineJoin: .round)
-            )
-    }
     ForEach(slices) { slice in
-        if slice.coordinates.count > 1 {
-            MapPolyline(coordinates: slice.coordinates)
-                .stroke(
-                    slice.color(scale: scale),
-                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round)
-                )
-        }
+        MapPolyline(coordinates: slice.coordinates)
+            .stroke(
+                slice.color(scale: scale),
+                style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round)
+            )
     }
 }

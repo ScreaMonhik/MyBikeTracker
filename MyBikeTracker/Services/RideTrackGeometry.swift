@@ -172,91 +172,15 @@ enum RideTrackGeometry {
 }
 
 private struct SpeedSliceBuilder {
-    private static let blendThresholdKmh = 2.0
-    private static let blendStepKmh = 1.0
-    private static let maxBlendStepsPerEdge = 10
-
     private var slices: [SpeedColoredSlice] = []
     private var current: [CLLocationCoordinate2D] = []
     private var currentBand: Int?
     private var speedSum = 0.0
     private var speedCount = 0
-    private var lastEmittedSpeed: Double?
 
     mutating func append(coordinates: [CLLocationCoordinate2D], speedKmh: Double) {
         guard coordinates.count >= 2 else { return }
-        let connects = lastCoordinate.map { sameCoordinate(coordinates[0], $0) } ?? false
-        if !connects {
-            lastEmittedSpeed = nil
-        }
-        if connects, let previous = lastEmittedSpeed, abs(speedKmh - previous) >= Self.blendThresholdKmh {
-            emitBlended(coordinates: coordinates, from: previous, to: speedKmh)
-            return
-        }
-        appendSolid(coordinates: coordinates, speedKmh: speedKmh)
-    }
-
-    private var lastCoordinate: CLLocationCoordinate2D? {
-        current.last ?? slices.last?.coordinates.last
-    }
-
-    private mutating func emitBlended(
-        coordinates: [CLLocationCoordinate2D],
-        from startSpeed: Double,
-        to endSpeed: Double
-    ) {
-        let total = RideTrackGeometry.polylineDistance(coordinates)
-        guard total > 0 else {
-            appendSolid(coordinates: coordinates, speedKmh: endSpeed)
-            return
-        }
-
-        var traveled = 0.0
-        for index in 1..<coordinates.count {
-            let start = coordinates[index - 1]
-            let end = coordinates[index]
-            let edge = distance(start, end)
-            let startT = traveled / total
-            let endT = (traveled + edge) / total
-            emitBlendedEdge(
-                from: start,
-                to: end,
-                startSpeed: startSpeed + (endSpeed - startSpeed) * startT,
-                endSpeed: startSpeed + (endSpeed - startSpeed) * endT
-            )
-            traveled += edge
-        }
-    }
-
-    private mutating func emitBlendedEdge(
-        from start: CLLocationCoordinate2D,
-        to end: CLLocationCoordinate2D,
-        startSpeed: Double,
-        endSpeed: Double
-    ) {
-        let edge = distance(start, end)
-        let delta = abs(endSpeed - startSpeed)
-        let speedSteps = max(2, Int(ceil(delta / Self.blendStepKmh)))
-        let distanceSteps = max(1, Int(edge / 5))
-        let steps = min(Self.maxBlendStepsPerEdge, max(2, min(speedSteps, distanceSteps)))
-        if edge < 6 || delta < Self.blendThresholdKmh || steps < 2 {
-            appendSolid(
-                coordinates: [start, end],
-                speedKmh: (startSpeed + endSpeed) / 2
-            )
-            return
-        }
-        for index in 0..<steps {
-            let t0 = Double(index) / Double(steps)
-            let t1 = Double(index + 1) / Double(steps)
-            appendSolid(
-                coordinates: [lerp(start, end, t0), lerp(start, end, t1)],
-                speedKmh: startSpeed + (endSpeed - startSpeed) * ((t0 + t1) / 2)
-            )
-        }
-    }
-
-    private mutating func appendSolid(coordinates: [CLLocationCoordinate2D], speedKmh: Double) {
+        guard RideTrackGeometry.polylineDistance(coordinates) > 0.4 else { return }
         let band = SpeedHeatmap.band(forKmh: speedKmh)
         if currentBand == band, let last = current.last {
             if sameCoordinate(coordinates[0], last) {
@@ -266,7 +190,6 @@ private struct SpeedSliceBuilder {
             }
             speedSum += speedKmh
             speedCount += 1
-            lastEmittedSpeed = speedKmh
             return
         }
         flush()
@@ -274,7 +197,6 @@ private struct SpeedSliceBuilder {
         currentBand = band
         speedSum = speedKmh
         speedCount = 1
-        lastEmittedSpeed = speedKmh
     }
 
     mutating func finish() -> [SpeedColoredSlice] {
@@ -292,7 +214,7 @@ private struct SpeedSliceBuilder {
         guard current.count > 1, speedCount > 0, let band = currentBand else { return }
         slices.append(
             SpeedColoredSlice(
-                id: sliceID(coordinates: current, band: band),
+                id: "\(slices.count)-\(sliceID(coordinates: current, band: band))",
                 coordinates: current,
                 speedKmh: speedSum / Double(speedCount)
             )
@@ -315,17 +237,5 @@ private struct SpeedSliceBuilder {
 
     private func sameCoordinate(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
         abs(a.latitude - b.latitude) < 1e-9 && abs(a.longitude - b.longitude) < 1e-9
-    }
-
-    private func distance(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> CLLocationDistance {
-        CLLocation(latitude: a.latitude, longitude: a.longitude)
-            .distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude))
-    }
-
-    private func lerp(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D, _ t: Double) -> CLLocationCoordinate2D {
-        CLLocationCoordinate2D(
-            latitude: a.latitude + (b.latitude - a.latitude) * t,
-            longitude: a.longitude + (b.longitude - a.longitude) * t
-        )
     }
 }
