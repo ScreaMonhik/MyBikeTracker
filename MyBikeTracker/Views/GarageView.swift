@@ -6,6 +6,7 @@ struct GarageView: View {
     @AppStorage(PreferenceKey.distanceUnitSystem) private var unitSystemRaw = DistanceUnitSystem.metric.rawValue
     @State private var showAddBike = false
     @State private var editingPaceBikeID: UUID?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         Group {
@@ -22,6 +23,15 @@ struct GarageView: View {
                     ForEach(ridesViewModel.bikes, id: \.id) { bike in
                         bikeRow(bike)
                             .brandListCard()
+                            .overlay {
+                                RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous)
+                                    .strokeBorder(
+                                        selectedBikeId == bike.id.uuidString
+                                            ? Brand.Color.trail.opacity(0.45)
+                                            : Brand.Color.hairline,
+                                        lineWidth: selectedBikeId == bike.id.uuidString ? 1.5 : 1
+                                    )
+                            }
                     }
                     .onDelete { offsets in
                         for index in offsets {
@@ -62,46 +72,65 @@ struct GarageView: View {
 
     @ViewBuilder
     private func bikeRow(_ bike: Bike) -> some View {
+        let remainingMeters = max(0, bike.chainIntervalMeters - bike.metersSinceChainService)
         let progress = bike.chainIntervalMeters > 0
             ? min(bike.metersSinceChainService / bike.chainIntervalMeters, 1)
             : 0
         let isSelected = selectedBikeId == bike.id.uuidString
 
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Button {
                 selectedBikeId = bike.id.uuidString
                 BrandHaptics.select()
             } label: {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
+                    HStack(alignment: .top, spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(bike.name)
                                 .font(Brand.Font.headline)
                                 .foregroundStyle(Brand.Color.ink)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
                             Text(RideFormatters.distance(meters: bike.odometerMeters))
                                 .font(Brand.Font.metric(16))
-                                .foregroundStyle(Brand.Color.muted)
+                                .foregroundStyle(Brand.Color.ink)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                         }
-                        Spacer()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
                         if isSelected {
-                            BrandBadge(title: LocalizedStringKey("garage_selected"), kind: .live)
+                            BrandBadge(title: LocalizedStringKey("garage_selected"), kind: .info)
+                                .fixedSize()
+                                .layoutPriority(1)
                         }
                     }
 
-                    ProgressView(value: progress)
-                        .tint(bike.isChainDue ? Brand.Color.amber : Brand.Color.trail)
+                    VStack(alignment: .leading, spacing: 8) {
+                        GarageChainTrack(
+                            progress: progress,
+                            tint: bike.isChainDue ? Brand.Color.amber : Brand.Color.trail
+                        )
 
-                    if bike.isChainDue {
-                        Label(LocalizedStringKey("garage_chain_due"), systemImage: "wrench.and.screwdriver")
+                        if bike.isChainDue {
+                            Label {
+                                Text(LocalizedStringKey("garage_chain_due"))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            } icon: {
+                                Image(systemName: "wrench.and.screwdriver")
+                            }
                             .font(Brand.Font.caption)
                             .foregroundStyle(Brand.Color.amber)
-                    } else {
-                        Text(String(
-                            format: NSLocalizedString("garage_chain_remaining", comment: ""),
-                            RideFormatters.distance(meters: max(0, bike.chainIntervalMeters - bike.metersSinceChainService))
-                        ))
-                        .font(Brand.Font.micro)
-                        .foregroundStyle(Brand.Color.muted)
+                        } else {
+                            Text(String(
+                                format: NSLocalizedString("garage_chain_remaining", comment: ""),
+                                RideFormatters.distance(meters: remainingMeters)
+                            ))
+                            .font(Brand.Font.micro)
+                            .foregroundStyle(Brand.Color.muted)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -111,25 +140,79 @@ struct GarageView: View {
             .accessibilityLabel(bike.name)
             .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
 
-            HStack {
-                Button(LocalizedStringKey("garage_chain_reset")) {
-                    ridesViewModel.resetChain(for: bike)
-                    BrandHaptics.success()
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(spacing: 8) {
+                        bikeActions(for: bike)
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        bikeActions(for: bike)
+                    }
                 }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-                Spacer()
+    @ViewBuilder
+    private func bikeActions(for bike: Bike) -> some View {
+        garageAction(title: LocalizedStringKey("garage_chain_reset")) {
+            ridesViewModel.resetChain(for: bike)
+            BrandHaptics.success()
+        }
+        garageAction(
+            title: LocalizedStringKey("garage_pace_title"),
+            systemImage: "speedometer"
+        ) {
+            editingPaceBikeID = bike.id
+        }
+    }
 
-                Button {
-                    editingPaceBikeID = bike.id
-                } label: {
-                    Label(LocalizedStringKey("garage_pace_title"), systemImage: "speedometer")
+    private func garageAction(
+        title: LocalizedStringKey,
+        systemImage: String? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Group {
+                if let systemImage {
+                    Label(title, systemImage: systemImage)
+                } else {
+                    Text(title)
                 }
             }
             .font(Brand.Font.caption)
-            .tint(Brand.Color.trail)
-            .buttonStyle(.borderless)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 8)
+            .foregroundStyle(Brand.Color.trail)
+            .background(Brand.Color.surfaceMuted, in: Capsule())
         }
-        .padding(.vertical, 6)
+        .buttonStyle(.plain)
+    }
+}
+
+private struct GarageChainTrack: View {
+    let progress: Double
+    let tint: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Brand.Color.surfaceMuted)
+                Capsule()
+                    .fill(tint.gradient)
+                    .frame(width: max(geo.size.width * progress, progress > 0 ? 6 : 0))
+            }
+        }
+        .frame(height: 6)
+        .accessibilityHidden(true)
     }
 }
 

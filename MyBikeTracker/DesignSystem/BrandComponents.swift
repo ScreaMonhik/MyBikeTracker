@@ -95,6 +95,8 @@ struct BrandBadge: View {
             }
             Text(title)
                 .font(Brand.Font.caption)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)

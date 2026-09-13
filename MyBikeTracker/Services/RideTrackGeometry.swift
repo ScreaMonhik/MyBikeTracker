@@ -180,6 +180,7 @@ private struct SpeedSliceBuilder {
 
     mutating func append(coordinates: [CLLocationCoordinate2D], speedKmh: Double) {
         guard coordinates.count >= 2 else { return }
+        guard RideTrackGeometry.polylineDistance(coordinates) > 0.4 else { return }
         let band = SpeedHeatmap.band(forKmh: speedKmh)
         if currentBand == band, let last = current.last {
             if sameCoordinate(coordinates[0], last) {
@@ -213,7 +214,7 @@ private struct SpeedSliceBuilder {
         guard current.count > 1, speedCount > 0, let band = currentBand else { return }
         slices.append(
             SpeedColoredSlice(
-                id: sliceID(coordinates: current, band: band),
+                id: "\(slices.count)-\(sliceID(coordinates: current, band: band))",
                 coordinates: current,
                 speedKmh: speedSum / Double(speedCount)
             )
