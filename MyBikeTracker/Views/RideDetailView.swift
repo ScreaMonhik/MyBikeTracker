@@ -133,7 +133,7 @@ struct RideDetailView: View {
                     .padding(.horizontal, 16)
                 }
             }
-            .padding(.bottom, 24)
+            .padding(.bottom, BrandTabBar.contentClearance)
         }
         .brandScreen()
         .navigationTitle(LocalizedStringKey("ride_details"))
