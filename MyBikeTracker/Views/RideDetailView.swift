@@ -18,14 +18,13 @@ struct RideDetailView: View {
 
     var body: some View {
         let rideColor = ride.resolvedLineColor(defaultHex: historyColorHex)
-        let speedSlices = ride.speedColoredSlices
-        let usesSpeedHeatmap = speedSlices.contains { $0.coordinates.count > 1 }
+        let usesSpeedHeatmap = ride.usesSpeedHeatmapLine
         let _ = ridesViewModel.routeStyleRevision
         ScrollView {
             VStack(spacing: 16) {
                 Map {
-                    if usesSpeedHeatmap && !ride.hasCustomLineColor {
-                        speedTrackMapContent(slices: speedSlices)
+                    if usesSpeedHeatmap {
+                        speedTrackMapContent(slices: ride.speedColoredSlices)
                     } else {
                         ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
                             if coords.count > 1 {
@@ -47,7 +46,7 @@ struct RideDetailView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
 
-                if usesSpeedHeatmap && !ride.hasCustomLineColor {
+                if usesSpeedHeatmap {
                     HStack(spacing: 8) {
                         Text(LocalizedStringKey("speed_legend_slow"))
                         LinearGradient(

@@ -68,10 +68,26 @@ enum SpeedHeatmap {
 }
 
 @MainActor
-@MapContentBuilder
 func speedTrackMapContent(
     slices: [SpeedColoredSlice],
-    lineWidth: CGFloat = 4.5
+    lineWidth: CGFloat = 4.5,
+    idPrefix: String = ""
+) -> some MapContent {
+    let tagged = slices.map { slice in
+        SpeedColoredSlice(
+            id: idPrefix.isEmpty ? slice.id : "\(idPrefix)-\(slice.id)",
+            coordinates: slice.coordinates,
+            speedKmh: slice.speedKmh
+        )
+    }
+    return speedTrackPolylines(slices: tagged, lineWidth: lineWidth)
+}
+
+@MainActor
+@MapContentBuilder
+private func speedTrackPolylines(
+    slices: [SpeedColoredSlice],
+    lineWidth: CGFloat
 ) -> some MapContent {
     ForEach(slices) { slice in
         if slice.coordinates.count > 1 {

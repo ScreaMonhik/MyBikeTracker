@@ -495,19 +495,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The live ride line is colored by speed — teal is slow, ember is fast. The color below tints the rider marker. Completed rides use the map color until you choose a custom color for a ride — tap its line on the Map tab or open the ride in History."
+            "value": "The live ride line is colored by speed — teal is slow, ember is fast. The color below tints the rider marker. Finished rides use the same speed colors on the Map tab unless you pick a custom color — tap the line on Map or open the ride in History."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Линия активной поездки окрашивается по скорости: бирюзовый — медленно, оранжевый — быстро. Цвет ниже задаёт маркер райдера. Завершённые поездки используют цвет общей карты, пока вы не зададите свой цвет линии — нажатием на линию на вкладке «Карта» или в истории."
+            "value": "Линия активной поездки окрашивается по скорости: бирюзовый — медленно, оранжевый — быстро. Цвет ниже задаёт маркер райдера. Завершённые поездки на вкладке «Карта» тоже красятся по скорости, пока вы не зададите свой цвет линии — нажатием на линию или в истории."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Лінія активної поїздки забарвлюється за швидкістю: бірюзовий — повільно, помаранчевий — швидко. Колір нижче задає маркер райдера. Завершені поїздки використовують колір загальної карти, доки ви не задасте свій колір лінії — натисканням на лінію на вкладці «Карта» або в історії."
+            "value": "Лінія активної поїздки забарвлюється за швидкістю: бірюзовий — повільно, помаранчевий — швидко. Колір нижче задає маркер райдера. Завершені поїздки на вкладці «Карта» також фарбуються за швидкістю, доки ви не задасте свій колір лінії — натисканням на лінію або в історії."
           }
         }
       }

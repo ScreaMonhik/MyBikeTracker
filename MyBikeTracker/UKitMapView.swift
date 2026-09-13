@@ -107,10 +107,18 @@ struct UIKitMapView: View {
                 ForEach(rides) { ride in
                     let rideColor = ride.resolvedLineColor(defaultHex: defaultRideColorHex)
                     let width: CGFloat = ride.id == selectedRideID ? 7 : 4
-                    ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
-                        if coords.count > 1 {
-                            MapPolyline(coordinates: coords)
-                                .stroke(rideColor, lineWidth: width)
+                    if ride.usesSpeedHeatmapLine {
+                        speedTrackMapContent(
+                            slices: ride.speedColoredSlices,
+                            lineWidth: width,
+                            idPrefix: ride.id.uuidString
+                        )
+                    } else {
+                        ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
+                            if coords.count > 1 {
+                                MapPolyline(coordinates: coords)
+                                    .stroke(rideColor, lineWidth: width)
+                            }
                         }
                     }
                 }

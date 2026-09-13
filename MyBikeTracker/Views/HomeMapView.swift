@@ -16,9 +16,13 @@ struct HomeMapView: View {
 
     @AppStorage(.historyRouteColorKey) private var historyColorHex: String = RouteLineColor.defaultHistoryHex
 
+    private var showsSpeedLegend: Bool {
+        ridesViewModel.rides.contains { $0.usesSpeedHeatmapLine }
+    }
+
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .top) {
+            ZStack {
                 UIKitMapView(
                     rides: ridesViewModel.rides,
                     lineColor: RouteLineColor.uiColor(from: historyColorHex),
@@ -40,7 +44,8 @@ struct HomeMapView: View {
                 .onAppear {
                     viewModel.forceAutoCenter()
                 }
-
+            }
+            .overlay(alignment: .top) {
                 HStack(alignment: .top) {
                     BrandFloatingChip(
                         title: LocalizedStringKey("map_tab_title"),
@@ -57,10 +62,19 @@ struct HomeMapView: View {
                         .transition(.scale.combined(with: .opacity))
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
+                .padding(.horizontal, Brand.Space.md)
+                .padding(.top, Brand.Space.sm)
                 .animation(Brand.Motion.snappy, value: viewModel.navigationRoute != nil)
             }
+            .overlay(alignment: .bottomLeading) {
+                if showsSpeedLegend {
+                    SpeedTrackLegend()
+                        .padding(.leading, Brand.Space.md)
+                        .padding(.bottom, BrandTabBar.contentClearance)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+            }
+            .animation(Brand.Motion.snappy, value: showsSpeedLegend)
             .toolbar(.hidden, for: .navigationBar)
         }
     }
