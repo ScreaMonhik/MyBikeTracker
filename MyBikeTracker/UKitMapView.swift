@@ -58,11 +58,40 @@ struct UIKitMapView: View {
         viewModel.startTime != nil && !viewModel.isPaused
     }
 
+    private var livePaceScale: PaceScale {
+        viewModel.livePaceScale
+    }
+
     private var riderAccent: Color {
         if viewModel.startTime != nil {
-            return SpeedHeatmap.color(forKmh: viewModel.currentSpeed)
+            return SpeedHeatmap.color(forKmh: viewModel.currentSpeed, scale: livePaceScale)
         }
         return Color(uiColor: lineColor)
+    }
+
+    private var visibleRides: [Ride] {
+        if rides.count <= 40 { return rides }
+        var limited = Array(rides.prefix(40))
+        if let selected = rides.first(where: { $0.id == selectedRideID }),
+           !limited.contains(where: { $0.id == selected.id }) {
+            limited.insert(selected, at: 0)
+        }
+        return limited
+    }
+
+    private var newestRideID: UUID? { rides.first?.id }
+
+    private func paceScale(for ride: Ride) -> PaceScale {
+        ridesViewModel?.paceScale(for: ride) ?? .default
+    }
+
+    private func shouldDrawHeatmap(for ride: Ride) -> Bool {
+        guard ride.hasSpeedHeatmapData else { return false }
+        return MapRideHeatmap.isActive(
+            rideID: ride.id,
+            newestRideID: newestRideID,
+            selectedRideID: selectedRideID
+        )
     }
 
     var body: some View {
@@ -94,7 +123,7 @@ struct UIKitMapView: View {
                 }
 
                 if !liveSpeedSlices.isEmpty {
-                    speedTrackMapContent(slices: liveSpeedSlices)
+                    speedTrackMapContent(slices: liveSpeedSlices, scale: livePaceScale)
                 } else {
                     ForEach(Array(resolvedLiveSegments.enumerated()), id: \.offset) { _, coords in
                         if coords.count > 1 {
@@ -104,12 +133,13 @@ struct UIKitMapView: View {
                     }
                 }
 
-                ForEach(rides) { ride in
+                ForEach(visibleRides) { ride in
                     let rideColor = ride.resolvedLineColor(defaultHex: defaultRideColorHex)
                     let width: CGFloat = ride.id == selectedRideID ? 7 : 4
-                    if ride.usesSpeedHeatmapLine {
+                    if shouldDrawHeatmap(for: ride) {
                         speedTrackMapContent(
                             slices: ride.speedColoredSlices,
+                            scale: paceScale(for: ride),
                             lineWidth: width,
                             idPrefix: ride.id.uuidString
                         )
@@ -125,12 +155,17 @@ struct UIKitMapView: View {
             }
             .onMapCameraChange(frequency: .continuous) { context in
                 cameraDistance = context.camera.distance
+                viewModel.handleLiveCameraRegion(context.region)
             }
-            .onMapCameraChange(frequency: .onEnd) { _ in
-                if !viewModel.isProgrammaticRegionChange {
-                    viewModel.shouldAutoCenter = false
-                }
+            .onMapCameraChange(frequency: .onEnd) { context in
+                viewModel.handleCameraIdle(context.region)
             }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { _ in
+                        viewModel.breakAutoCenterFromUserInteraction()
+                    }
+            )
             .background {
                 GeometryReader { geo in
                     Color.clear

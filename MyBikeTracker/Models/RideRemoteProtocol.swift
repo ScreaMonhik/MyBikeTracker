@@ -7,6 +7,7 @@ enum RideRemoteKey {
     static let elapsed = "elapsed"
     static let speed = "speed"
     static let distance = "distance"
+    static let unitSystem = "unitSystem"
 }
 
 enum RideRemoteCommand: String {
@@ -14,4 +15,5 @@ enum RideRemoteCommand: String {
     case pause
     case resume
     case stop
+    case discard
 }

@@ -58,8 +58,8 @@ struct YearlyKmWidget: Widget {
             SmallWidgetView(entry: entry)
                 .containerBackground(.background, for: .widget)
         }
-        .configurationDisplayName("Yearly Distance")
-        .description("Total kilometers ridden this year.")
+        .configurationDisplayName(LocalizedStringKey("widget_yearly_name"))
+        .description(LocalizedStringKey("widget_yearly_description"))
         .supportedFamilies([.systemSmall])
     }
 }
@@ -74,8 +74,8 @@ struct YearlyKmCalendarWidget: Widget {
             MediumWidgetView(entry: entry)
                 .containerBackground(.background, for: .widget)
         }
-        .configurationDisplayName("Yearly Distance + Calendar")
-        .description("Total km this year with a monthly ride calendar.")
+        .configurationDisplayName(LocalizedStringKey("widget_calendar_name"))
+        .description(LocalizedStringKey("widget_calendar_description"))
         .supportedFamilies([.systemMedium])
     }
 }
@@ -198,7 +198,7 @@ struct MediumWidgetView: View {
                     Text(verbatim: "\(monthRides) ")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                    + Text("this month")
+                    + Text(LocalizedStringKey("widget_this_month"))
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }

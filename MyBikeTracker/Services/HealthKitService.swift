@@ -1,87 +1,115 @@
-//
-//  HealthKitService.swift
-//  MyBikeTracker
-//
-//  Created by Dima Sunko on 06.03.2025.
-//
-
 import Foundation
 import HealthKit
 import CoreLocation
 
-/// Wraps all HealthKit write operations for cycling workouts.
 final class HealthKitService {
-
     private let store = HKHealthStore()
     private var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
-    // MARK: - Authorization
-
-    /// Requests HealthKit write permissions. Safe to call multiple times – HealthKit caches the user's decision.
     func requestAuthorization() async {
         guard isAvailable else { return }
 
-        let typesToShare: Set<HKSampleType> = [
+        var typesToShare: Set<HKSampleType> = [
             HKQuantityType.workoutType(),
             HKQuantityType(.distanceCycling),
             HKQuantityType(.activeEnergyBurned),
             HKSeriesType.workoutRoute()
         ]
+        if let heartRate = HKQuantityType.quantityType(forIdentifier: .heartRate) {
+            typesToShare.insert(heartRate)
+        }
 
         try? await store.requestAuthorization(toShare: typesToShare, read: [])
     }
 
-    // MARK: - Save Workout
-
-    /// Saves a completed cycling workout to HealthKit, including GPS route.
-    /// - Parameters:
-    ///   - ride: The finished `Ride` model.
-    ///   - locations: Raw `CLLocation` array recorded during the ride (for the route).
     func saveWorkout(ride: Ride, locations: [CLLocation]) async throws {
         guard isAvailable else { return }
 
-        // 1. Build the HKWorkout
-        let distanceQuantity = HKQuantity(unit: .meter(), doubleValue: ride.distance)
-        let energyQuantity = estimatedCalories(distanceMeters: ride.distance)
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = .cycling
+        configuration.locationType = .outdoor
 
-        var metadata: [String: Any] = [:]
-        if ride.elevationGain > 0 {
-            metadata[HKMetadataKeyElevationAscended] = HKQuantity(
-                unit: .meter(),
-                doubleValue: ride.elevationGain
+        let builder = HKWorkoutBuilder(healthStore: store, configuration: configuration, device: .local())
+        try await builder.beginCollection(at: ride.startDate)
+
+        var samples: [HKSample] = []
+        let distanceType = HKQuantityType(.distanceCycling)
+        let energyType = HKQuantityType(.activeEnergyBurned)
+        samples.append(
+            HKQuantitySample(
+                type: distanceType,
+                quantity: HKQuantity(unit: .meter(), doubleValue: ride.distance),
+                start: ride.startDate,
+                end: ride.endDate
+            )
+        )
+
+        let kilocalories = Self.estimatedKilocalories(
+            distanceMeters: ride.distance,
+            duration: ride.duration,
+            averageHeartRate: ride.averageHeartRate
+        )
+        samples.append(
+            HKQuantitySample(
+                type: energyType,
+                quantity: HKQuantity(unit: .kilocalorie(), doubleValue: kilocalories),
+                start: ride.startDate,
+                end: ride.endDate
+            )
+        )
+
+        if ride.averageHeartRate > 0, let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) {
+            samples.append(
+                HKQuantitySample(
+                    type: heartRateType,
+                    quantity: HKQuantity(
+                        unit: HKUnit.count().unitDivided(by: .minute()),
+                        doubleValue: ride.averageHeartRate
+                    ),
+                    start: ride.startDate,
+                    end: ride.endDate
+                )
             )
         }
 
-        let workout = HKWorkout(
-            activityType: .cycling,
-            start: ride.startDate,
-            end: ride.endDate,
-            duration: ride.duration,
-            totalEnergyBurned: energyQuantity,
-            totalDistance: distanceQuantity,
-            metadata: metadata.isEmpty ? nil : metadata
-        )
+        try await builder.addSamples(samples)
+        if ride.elevationGain > 0 {
+            try await builder.addMetadata([
+                HKMetadataKeyElevationAscended: HKQuantity(unit: .meter(), doubleValue: ride.elevationGain)
+            ])
+        }
+        try await builder.endCollection(at: ride.endDate)
+        guard let workout = try await builder.finishWorkout() else { return }
 
-        // 2. Save the workout object
-        try await store.save(workout)
-
-        // 3. Build and attach a GPS route (only if we have location data)
         guard !locations.isEmpty else { return }
         try await attachRoute(to: workout, locations: locations)
     }
 
-    // MARK: - Private helpers
-
-    /// Attach an `HKWorkoutRoute` to a saved workout using a `HKWorkoutRouteBuilder`.
     private func attachRoute(to workout: HKWorkout, locations: [CLLocation]) async throws {
         let builder = HKWorkoutRouteBuilder(healthStore: store, device: nil)
         try await builder.insertRouteData(locations)
         try await builder.finishRoute(with: workout, metadata: nil)
     }
 
-    /// Rough calorie estimate: ~25 kcal per km for cycling (no HRM).
-    private func estimatedCalories(distanceMeters: Double) -> HKQuantity {
-        let kcal = (distanceMeters / 1000.0) * 25.0
-        return HKQuantity(unit: .kilocalorie(), doubleValue: max(kcal, 0))
+    static func estimatedKilocalories(
+        distanceMeters: Double,
+        duration: TimeInterval,
+        averageHeartRate: Double,
+        weightKilograms: Double = 70
+    ) -> Double {
+        let hours = max(duration / 3600, 1.0 / 60)
+        let kilometers = max(distanceMeters / 1000, 0)
+        let speedKmh = hours > 0 ? kilometers / hours : 0
+        let met = min(12, max(3.5, 3.5 + speedKmh / 5))
+        let fromMET = met * 3.5 * weightKilograms * (duration / 60) / 200
+        if averageHeartRate >= 90 {
+            let kcalPerMinute = max(
+                0,
+                (-55.0969 + 0.6309 * averageHeartRate + 0.1988 * weightKilograms + 0.2017 * 35) / 4.184
+            )
+            let fromHeartRate = kcalPerMinute * (duration / 60)
+            return max(fromMET, fromHeartRate)
+        }
+        return max(fromMET, 0)
     }
 }

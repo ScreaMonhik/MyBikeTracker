@@ -3,6 +3,7 @@ import SwiftUI
 struct EndRideConfirmationView: View {
     @ObservedObject var viewModel: MapViewModel
     let onConfirm: () -> Void
+    let onDiscard: () -> Void
     let onCancel: () -> Void
     @State private var appeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -29,7 +30,7 @@ struct EndRideConfirmationView: View {
                         .foregroundStyle(Brand.Color.ink)
                         .multilineTextAlignment(.center)
 
-                    Text(LocalizedStringKey("end_ride_subtitle"))
+                    Text(LocalizedStringKey(viewModel.isRideAccidental ? "end_ride_short_subtitle" : "end_ride_subtitle"))
                         .font(.body)
                         .foregroundStyle(Brand.Color.muted)
                         .multilineTextAlignment(.center)
@@ -73,11 +74,22 @@ struct EndRideConfirmationView: View {
                     GlassActionButton(
                         title: LocalizedStringKey("end_ride_confirm"),
                         systemImage: "checkmark",
-                        prominent: true,
+                        prominent: !viewModel.isRideAccidental,
                         tint: Brand.Color.danger,
                         action: {
                             BrandHaptics.success()
                             onConfirm()
+                        }
+                    )
+
+                    GlassActionButton(
+                        title: LocalizedStringKey("end_ride_discard"),
+                        systemImage: "trash",
+                        prominent: viewModel.isRideAccidental,
+                        tint: Brand.Color.amber,
+                        action: {
+                            BrandHaptics.warning()
+                            onDiscard()
                         }
                     )
 

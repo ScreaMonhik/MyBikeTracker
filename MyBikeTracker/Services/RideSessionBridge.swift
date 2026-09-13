@@ -29,7 +29,8 @@ final class RideSessionBridge: NSObject {
             RideRemoteKey.paused: paused,
             RideRemoteKey.elapsed: elapsed,
             RideRemoteKey.speed: speed,
-            RideRemoteKey.distance: distance
+            RideRemoteKey.distance: distance,
+            RideRemoteKey.unitSystem: UnitPreferences.current.rawValue
         ]
         let signature = "\(tracking)|\(paused)|\(Int(elapsed))|\(Int(speed * 10))|\(Int(distance))"
         guard signature != lastContextSignature else { return }
@@ -55,7 +56,9 @@ final class RideSessionBridge: NSObject {
         case .resume:
             mapViewModel.resumeTracking()
         case .stop:
-            mapViewModel.stopTracking()
+            mapViewModel.confirmStopTracking()
+        case .discard:
+            mapViewModel.discardRide()
         }
     }
 }

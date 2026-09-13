@@ -350,6 +350,29 @@
         }
       }
     },
+    "follow_rider_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Following rider"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Райдер в центре"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Райдер у центрі"
+          }
+        }
+      }
+    },
     "clear_route_title": {
       "extractionState": "manual",
       "localizations": {
@@ -495,19 +518,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The live ride line is colored by speed — teal is slow, ember is fast. The color below tints the rider marker. Finished rides use the same speed colors on the Map tab unless you pick a custom color — tap the line on Map or open the ride in History."
+            "value": "Older rides on the Map tab use this color, unless a ride has its own color. The latest ride — or any ride you tap — is shown as a speed heatmap."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Линия активной поездки окрашивается по скорости: бирюзовый — медленно, оранжевый — быстро. Цвет ниже задаёт маркер райдера. Завершённые поездки на вкладке «Карта» тоже красятся по скорости, пока вы не зададите свой цвет линии — нажатием на линию или в истории."
+            "value": "Цвет линий прошлых поездок на вкладке «Карта», если у поездки нет своего цвета. Последняя поездка — или та, по которой вы тапнули — показывается тепловой картой темпа."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Лінія активної поїздки забарвлюється за швидкістю: бірюзовий — повільно, помаранчевий — швидко. Колір нижче задає маркер райдера. Завершені поїздки на вкладці «Карта» також фарбуються за швидкістю, доки ви не задасте свій колір лінії — натисканням на лінію або в історії."
+            "value": "Колір ліній минулих поїздок на вкладці «Карта», якщо в поїздки немає свого кольору. Остання поїздка — або та, яку ви торкнулися — показується тепловою картою темпу."
           }
         }
       }
@@ -2868,6 +2891,167 @@
         }
       }
     },
+    "garage_pace_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace levels"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уровни темпа"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рівні темпу"
+          }
+        }
+      }
+    },
+    "garage_pace_slow_max": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slow below"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Медленно ниже"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повільно нижче"
+          }
+        }
+      }
+    },
+    "garage_pace_medium_max": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medium below"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Средне ниже"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Середньо нижче"
+          }
+        }
+      }
+    },
+    "garage_pace_fast_from": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fast from"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Быстро от"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Швидко від"
+          }
+        }
+      }
+    },
+    "garage_pace_footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These speeds color this bike’s ride heatmap on Map, Ride, and the live track. Slow is teal, medium is amber, fast is ember."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эти пороги красят тепловую карту поездок на этом велосипеде — на карте, в деталях и на живом треке. Медленно — бирюзовый, средне — янтарный, быстро — оранжевый."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ці пороги фарбують теплову карту поїздок на цьому велосипеді — на карті, в деталях і на живому треку. Повільно — бірюзовий, середньо — бурштиновий, швидко — помаранчевий."
+          }
+        }
+      }
+    },
+    "speed_legend_medium": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medium"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Средне"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Середньо"
+          }
+        }
+      }
+    },
+    "ride_pace_legend_accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How much of this ride was slow, medium, and fast."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Какая доля этой поездки была медленной, средней и быстрой."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Яка частка цієї поїздки була повільною, середньою і швидкою."
+          }
+        }
+      }
+    },
     "sensors_section": {
       "extractionState": "manual",
       "localizations": {
@@ -3324,6 +3508,719 @@
           "stringUnit": {
             "state": "translated",
             "value": "Вчора"
+          }
+        }
+      }
+    },
+    "location_needed_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location is required"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нужен доступ к геопозиции"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Потрібен доступ до геопозиції"
+          }
+        }
+      }
+    },
+    "location_needed_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow location access to show you on the map and to record a ride."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешите доступ к геопозиции, чтобы видеть себя на карте и записывать поездку."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дозвольте доступ до геопозиції, щоб бачити себе на карті та записувати поїздку."
+          }
+        }
+      }
+    },
+    "location_denied_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location is turned off for this app. Enable it in Settings to record rides."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Геопозиция для приложения выключена. Включите её в Настройках, чтобы записывать поездки."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Геопозицію для програми вимкнено. Увімкніть її в Параметрах, щоб записувати поїздки."
+          }
+        }
+      }
+    },
+    "location_allow_button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow location"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить геопозицию"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дозволити геопозицію"
+          }
+        }
+      }
+    },
+    "location_open_settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть Настройки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкрити Параметри"
+          }
+        }
+      }
+    },
+    "end_ride_discard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard ride"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не сохранять"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не зберігати"
+          }
+        }
+      }
+    },
+    "end_ride_short_subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This looks like an accidental start. You can discard it or still save it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Похоже на случайный старт. Можно не сохранять или всё равно записать."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Схоже на випадковий старт. Можна не зберігати або все одно записати."
+          }
+        }
+      }
+    },
+    "export_privacy_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export includes GPS tracks"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Экспорт содержит GPS-треки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Експорт містить GPS-треки"
+          }
+        }
+      }
+    },
+    "export_privacy_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The backup includes precise ride tracks, bikes, and journal notes. Share it only with people you trust."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В резервной копии будут точные треки поездок, велосипеды и записи журнала. Делитесь только с теми, кому доверяете."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У резервній копії будуть точні треки поїздок, велосипеди та записи журналу. Діліться лише з тими, кому довіряєте."
+          }
+        }
+      }
+    },
+    "export_privacy_confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export backup"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Экспортировать"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Експортувати"
+          }
+        }
+      }
+    },
+    "import_success_full": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imported %lld rides, %lld bikes, %lld journal entries."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Импортировано поездок: %lld, велосипедов: %lld, записей журнала: %lld."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Імпортовано поїздок: %lld, велосипедів: %lld, записів журналу: %lld."
+          }
+        }
+      }
+    },
+    "privacy_section": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приватность"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приватність"
+          }
+        }
+      }
+    },
+    "privacy_section_footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rides stay on this device. Optional Mapbox matching sends coordinates over HTTPS only when a token is configured."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поездки хранятся на этом устройстве. Опциональный Mapbox matching отправляет координаты по HTTPS только если задан токен."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поїздки зберігаються на цьому пристрої. Необов’язковий Mapbox matching надсилає координати через HTTPS лише якщо задано токен."
+          }
+        }
+      }
+    },
+    "privacy_policy_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy Policy"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Политика конфиденциальности"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Політика конфіденційності"
+          }
+        }
+      }
+    },
+    "privacy_policy_open_web": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open online copy"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть онлайн-копию"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкрити онлайн-копію"
+          }
+        }
+      }
+    },
+    "privacy_policy_intro": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trail Dawn (MyBikeTracker) is a local bike tracker. Ride history, bikes, and journal entries are stored on your device with SwiftData."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trail Dawn (MyBikeTracker) — локальный велотрекер. История поездок, велосипеды и журнал хранятся на устройстве в SwiftData."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trail Dawn (MyBikeTracker) — локальний велотрекер. Історія поїздок, велосипеди та журнал зберігаються на пристрої в SwiftData."
+          }
+        }
+      }
+    },
+    "privacy_policy_location": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location is requested as When In Use first. Always and background updates are used only while a ride is recording."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сначала запрашивается доступ «при использовании». Always и фоновые обновления включаются только во время записи поездки."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спочатку запитується доступ «під час використання». Always і фонові оновлення вмикаються лише під час запису поїздки."
+          }
+        }
+      }
+    },
+    "privacy_policy_health": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If Apple Health is enabled, the app writes cycling workouts, calories, optional heart rate, and the GPS route. It does not read Health data."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Если включён Apple Health, приложение записывает велотренировки, калории, пульс (если есть) и GPS-маршрут. Данные Health не читаются."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Якщо ввімкнено Apple Health, програма записує велотренування, калорії, пульс (якщо є) і GPS-маршрут. Дані Health не читаються."
+          }
+        }
+      }
+    },
+    "privacy_policy_export": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON export is a full backup: rides with GPS, bikes, and journal photos. You choose when to share it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON-экспорт — полная резервная копия: поездки с GPS, велосипеды и фото журнала. Вы сами решаете, с кем ею делиться."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON-експорт — повна резервна копія: поїздки з GPS, велосипеди та фото журналу. Ви самі вирішуєте, з ким нею ділитися."
+          }
+        }
+      }
+    },
+    "privacy_policy_analytics": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnostics stay on device: product events and MetricKit crash summaries. Nothing is sent to a third-party analytics service."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Диагностика остаётся на устройстве: события продукта и сводки сбоев MetricKit. Ничего не отправляется в стороннюю аналитику."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Діагностика лишається на пристрої: події продукту та зведення збоїв MetricKit. Нічого не надсилається в сторонню аналітику."
+          }
+        }
+      }
+    },
+    "privacy_policy_third_party": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional Mapbox Map Matching and Apple MapKit Directions receive coordinates only to snap or draw a route. There are no ads and no account."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Опциональный Mapbox Map Matching и Apple MapKit Directions получают координаты только чтобы построить маршрут. Нет рекламы и аккаунта."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Необов’язковий Mapbox Map Matching і Apple MapKit Directions отримують координати лише щоб побудувати маршрут. Немає реклами й облікового запису."
+          }
+        }
+      }
+    },
+    "diagnostics_section": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnostics"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Диагностика"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Діагностика"
+          }
+        }
+      }
+    },
+    "diagnostics_no_crashes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No crash reports on this device."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этом устройстве нет отчётов о сбоях."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На цьому пристрої немає звітів про збої."
+          }
+        }
+      }
+    },
+    "diagnostics_events_footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local event log and MetricKit help find ride-save and location issues. Data never leaves the phone."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Локальный журнал событий и MetricKit помогают находить проблемы с сохранением поездок и геопозицией. Данные не покидают телефон."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Локальний журнал подій і MetricKit допомагають знаходити проблеми зі збереженням поїздок і геопозицією. Дані не залишають телефон."
+          }
+        }
+      }
+    },
+    "store_error_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ride library unavailable"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Библиотека поездок недоступна"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Бібліотека поїздок недоступна"
+          }
+        }
+      }
+    },
+    "store_error_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The on-device database could not be opened. Your existing files were backed up and were not deleted. This session is temporary until the store can be opened again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть локальную базу. Существующие файлы сохранены в резервную копию и не удалялись. Эта сессия временная, пока базу не удастся открыть снова."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося відкрити локальну базу. Наявні файли збережено в резервну копію і не видалялися. Ця сесія тимчасова, доки базу не вдасться відкрити знову."
+          }
+        }
+      }
+    },
+    "store_backup_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Database recovered from backup"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "База восстановлена из резервной копии"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Базу відновлено з резервної копії"
+          }
+        }
+      }
+    },
+    "store_backup_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opening the ride library failed once. A backup was made and the store was opened without deleting your data."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Первая попытка открыть библиотеку не удалась. Сделана резервная копия, база открыта без удаления данных."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перша спроба відкрити бібліотеку не вдалася. Зроблено резервну копію, базу відкрито без видалення даних."
+          }
+        }
+      }
+    },
+    "store_save_failed_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t save"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось сохранить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося зберегти"
+          }
+        }
+      }
+    },
+    "ride_restored_banner": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ride restored after interruption"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поездка восстановлена после сбоя"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поїздку відновлено після збою"
+          }
+        }
+      }
+    },
+    "max_heart_rate_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max heart rate"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Макс. пульс"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Макс. пульс"
           }
         }
       }

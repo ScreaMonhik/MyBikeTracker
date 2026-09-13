@@ -9,6 +9,10 @@ struct WeeklyGoalCard: View {
     @State private var animatedProgress: Double = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var system: DistanceUnitSystem {
+        DistanceUnitSystem(rawValue: unitSystemRaw) ?? .metric
+    }
+
     private var goalMeters: Double { goalKilometers * 1000 }
 
     private var progress: Double {
@@ -72,7 +76,7 @@ struct WeeklyGoalCard: View {
 
                     Text(String(
                         format: NSLocalizedString("weekly_goal_caption", comment: ""),
-                        RideFormatters.distance(meters: goalMeters)
+                        RideFormatters.distance(meters: goalMeters, system: system)
                     ))
                     .font(Brand.Font.micro)
                     .foregroundStyle(Brand.Color.trail)
@@ -102,7 +106,7 @@ struct WeeklyGoalCard: View {
         if delta == 0 {
             return NSLocalizedString("weekly_vs_last_same", comment: "")
         }
-        let formatted = RideFormatters.distance(meters: abs(delta))
+        let formatted = RideFormatters.distance(meters: abs(delta), system: system)
         let key = delta > 0 ? "weekly_vs_last_up" : "weekly_vs_last_down"
         return String(format: NSLocalizedString(key, comment: ""), formatted)
     }
@@ -129,7 +133,7 @@ struct WeeklyGoalEditor: View {
                         get: { displayGoal },
                         set: { goalKilometers = RideFormatters.weeklyGoalKilometers(fromDisplay: $0, system: system) }
                     ), in: 5...500, step: 5) {
-                        Text(RideFormatters.distance(meters: goalKilometers * 1000))
+                        Text(RideFormatters.distance(meters: goalKilometers * 1000, system: system))
                             .font(Brand.Font.metric(22))
                     }
                 } header: {

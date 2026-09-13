@@ -7,11 +7,12 @@ iOS app for recording bicycle rides: GPS track, stats, history, and a garage for
 ### Ride tracking
 - Start, pause, and stop a ride from the **Trip** tab
 - Live time, speed, distance, and elevation gain
-- Background GPS (`fitness` activity, always-authorization)
+- Background GPS only while a ride is recording (`fitness` activity; Always is requested at ride start)
 - Configurable auto-pause when you slow down
 - GPS gaps are split instead of drawing a straight “teleport” line; road fills are added when the network is back
 - Optional [Mapbox Map Matching](https://docs.mapbox.com/api/navigation/map-matching/) to snap the finished track to cycling roads
-- Confirmation screen before a ride is saved
+- Confirmation screen before a ride is saved, plus Discard and a short-ride warning
+- Live ride is checkpointed to the App Group so a crash can restore it
 - Share your current location during an active ride
 
 ### Map
@@ -25,7 +26,7 @@ iOS app for recording bicycle rides: GPS track, stats, history, and a garage for
 - Calendar of ride days
 - Per-day journal: note and photo
 - Ride detail: map, stats, elevation profile, line color
-- JSON export / import of rides
+- JSON backup / import of rides, bikes, and journal (GPS export is confirmed first)
 
 ### Garage
 - Multiple bikes, odometer, chain-service interval
@@ -35,7 +36,7 @@ iOS app for recording bicycle rides: GPS track, stats, history, and a garage for
 ### Sensors and shortcuts
 - Bluetooth heart-rate monitors (standard HR service)
 - Bluetooth cadence / speed sensors (CSC), with wheel circumference in Settings
-- Save finished rides to Apple Health (cycling workout + route)
+- Save finished rides to Apple Health (cycling workout, calories, optional heart rate, route)
 
 ### Widgets and Watch
 - Small widget: yearly distance
@@ -92,9 +93,9 @@ DEBUG builds add a **Developer** section in Settings: simulated moving/paused ri
 
 The app asks for:
 
-- Location (When In Use + Always) — map and background tracking
-- Bluetooth — heart-rate and cycling sensors
-- HealthKit — write cycling workouts and routes
+- Location (When In Use first; Always only during an active ride)
+- Bluetooth — heart-rate and cycling sensors, after you open Sensors or start a ride with a known device
+- HealthKit — write cycling workouts, calories, optional heart rate, and routes (no Health read)
 - Camera / Photo Library — day-journal photos
 
 ## Project layout
@@ -114,7 +115,9 @@ Rides, bikes, and journal entries are stored locally with **SwiftData**. Widget 
 
 ## Ride data
 
-A saved ride includes start/end time, duration, distance, average/max speed, elevation, optional bike, raw GPS, optional matched geometry, and an optional custom line color. Import/export uses JSON (`RideExportDTO`) and skips rides whose UUID is already present.
+A saved ride includes start/end time, duration, distance, average/max speed, elevation, optional bike, raw GPS, optional matched geometry, heart rate / cadence averages when a sensor was connected, and an optional custom line color. Backup uses JSON (`AppBackupDTO`) and skips rows whose UUID is already present. Legacy ride-only files still import.
+
+Privacy policy: [PRIVACY.md](PRIVACY.md). Store listing copy: [Store/ASO.md](Store/ASO.md).
 
 ## License
 

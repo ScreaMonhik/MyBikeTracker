@@ -9,12 +9,14 @@ import SwiftUI
 
 struct RideCalendarView: View {
     @ObservedObject var ridesViewModel: RidesViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var rides: [Ride] { ridesViewModel.rides }
-
-    @State private var displayedMonth: Date = Date().startOfMonth
-    @State private var showsYearView = false
-
     private let calendar = Calendar.current
+
+    @State private var visibleMonth: CalendarMonth?
+    @State private var visibleYear: Int?
+    @State private var showsYearView = false
 
     private var ridesByDay: [DateComponents: [Ride]] {
         Dictionary(grouping: rides) {
@@ -28,23 +30,45 @@ struct RideCalendarView: View {
         return Array(symbols[offset...] + symbols[..<offset])
     }
 
+    private var monthSpan: [CalendarMonth] {
+        CalendarMonth.sequence(from: spanStart, through: spanEnd)
+    }
+
+    private var years: [Int] {
+        Array(spanStart.year...spanEnd.year)
+    }
+
+    private var spanStart: CalendarMonth {
+        let today = CalendarMonth.from(Date(), calendar: calendar).adding(months: -36)
+        guard let firstRide = rides.map(\.startDate).min() else { return today }
+        let rideStart = CalendarMonth.from(firstRide, calendar: calendar).adding(months: -12)
+        return min(today, rideStart)
+    }
+
+    private var spanEnd: CalendarMonth {
+        let today = CalendarMonth.from(Date(), calendar: calendar).adding(months: 18)
+        guard let lastRide = rides.map(\.startDate).max() else { return today }
+        let rideEnd = CalendarMonth.from(lastRide, calendar: calendar).adding(months: 12)
+        return max(today, rideEnd)
+    }
+
+    private var selectedMonth: CalendarMonth {
+        visibleMonth ?? CalendarMonth.from(Date(), calendar: calendar)
+    }
+
     var body: some View {
         Group {
             if showsYearView {
                 yearView
             } else {
-                monthView
+                monthPager
             }
         }
         .navigationTitle(LocalizedStringKey("calendar_title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        showsYearView.toggle()
-                    }
-                } label: {
+                Button(action: toggleYearView) {
                     HStack(spacing: 6) {
                         Text(headerTitle)
                             .font(.headline)
@@ -58,112 +82,119 @@ struct RideCalendarView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                Button(LocalizedStringKey("calendar_today")) {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        displayedMonth = Date().startOfMonth
-                        showsYearView = false
-                    }
-                }
-                .disabled(calendar.isDate(displayedMonth, equalTo: Date(), toGranularity: .month) && !showsYearView)
+                Button(LocalizedStringKey("calendar_today"), action: jumpToToday)
+                    .disabled(isShowingToday)
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: displayedMonth)
-        .animation(.easeInOut(duration: 0.25), value: showsYearView)
+        .animation(Brand.Motion.snappy(reduceMotion: reduceMotion), value: showsYearView)
+        .sensoryFeedback(.selection, trigger: visibleMonth)
+        .onAppear {
+            if visibleMonth == nil {
+                visibleMonth = CalendarMonth.from(Date(), calendar: calendar)
+            }
+        }
     }
 
-    // MARK: - Month
+    // MARK: - Month pager
 
-    private var monthView: some View {
+    private var monthPager: some View {
         VStack(spacing: 12) {
-            HStack {
-                Button {
-                    changeMonth(by: -1)
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 44, height: 44)
-                }
-                Spacer()
-                Button {
-                    changeMonth(by: 1)
-                } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 44, height: 44)
-                }
-            }
-            .padding(.horizontal, 8)
-
             weekdayHeader
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 8) {
-                ForEach(CalendarGrid.days(for: displayedMonth, calendar: calendar)) { day in
-                    NavigationLink {
-                        RideDayDetailView(date: day.date, rides: rides(on: day.date), ridesViewModel: ridesViewModel)
-                    } label: {
-                        MonthDayCell(
-                            date: day.date,
-                            isInDisplayedMonth: day.isInDisplayedMonth,
-                            hasRide: hasRide(on: day.date),
-                            isToday: calendar.isDateInToday(day.date)
-                        )
-                    }
-                    .buttonStyle(.plain)
+            TabView(selection: monthSelection) {
+                ForEach(monthSpan) { month in
+                    monthPage(for: month)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .tag(month)
                 }
             }
-            .padding(.horizontal, 12)
-            .gesture(monthSwipeGesture)
-
-            Spacer()
+            .tabViewStyle(.page(indexDisplayMode: .never))
         }
         .padding(.top, 8)
         .brandScreen()
     }
 
-    // MARK: - Year
+    private var monthSelection: Binding<CalendarMonth> {
+        Binding(
+            get: { selectedMonth },
+            set: { visibleMonth = $0 }
+        )
+    }
+
+    private func monthPage(for month: CalendarMonth) -> some View {
+        let monthDate = month.date(in: calendar)
+        return LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7),
+            spacing: 8
+        ) {
+            ForEach(CalendarGrid.days(for: monthDate, calendar: calendar, minimumRows: 6)) { day in
+                NavigationLink {
+                    RideDayDetailView(date: day.date, rides: rides(on: day.date), ridesViewModel: ridesViewModel)
+                } label: {
+                    MonthDayCell(
+                        date: day.date,
+                        isInDisplayedMonth: day.isInDisplayedMonth,
+                        hasRide: hasRide(on: day.date),
+                        isToday: calendar.isDateInToday(day.date)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(monthDate.formatted(.dateTime.month(.wide).year()))
+    }
+
+    // MARK: - Year ribbon
 
     private var yearView: some View {
-        ScrollView {
-            HStack {
-                Button {
-                    changeYear(by: -1)
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 44, height: 44)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 28) {
+                    ForEach(years, id: \.self) { year in
+                        yearSection(year)
+                            .id(year)
+                    }
                 }
-
-                Spacer()
-
-                Button {
-                    changeYear(by: 1)
-                } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 44, height: 44)
-                }
+                .scrollTargetLayout()
+                .padding(.bottom, 48)
             }
-            .padding(.horizontal, 8)
+            .scrollPosition(id: $visibleYear, anchor: .top)
+            .brandScreen()
+            .onAppear {
+                let year = selectedMonth.year
+                visibleYear = year
+                proxy.scrollTo(year, anchor: .top)
+            }
+        }
+    }
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 3), spacing: 20) {
-                ForEach(monthsInDisplayedYear, id: \.self) { month in
+    private func yearSection(_ year: Int) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(String(year))
+                .font(.system(size: 40, weight: .bold, design: .rounded))
+                .foregroundStyle(Brand.Color.ink)
+                .padding(.horizontal, 4)
+
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 3),
+                spacing: 20
+            ) {
+                ForEach(CalendarMonth.months(in: year)) { month in
                     MiniMonthView(
-                        month: month,
-                        weekdaySymbols: weekdaySymbols,
+                        month: month.date(in: calendar),
                         ridesByDay: ridesByDay,
-                        ridesViewModel: ridesViewModel
+                        ridesViewModel: ridesViewModel,
+                        isCurrentMonth: month == CalendarMonth.from(Date(), calendar: calendar)
                     ) {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            displayedMonth = month.startOfMonth
-                            showsYearView = false
-                        }
+                        openMonth(month)
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
         }
-        .brandScreen()
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
     // MARK: - Shared
@@ -182,24 +213,15 @@ struct RideCalendarView: View {
 
     private var headerTitle: String {
         if showsYearView {
-            return displayedMonth.formatted(.dateTime.year())
+            return String(visibleYear ?? selectedMonth.year)
         }
-        return displayedMonth.formatted(.dateTime.month(.wide).year()).capitalized
+        return selectedMonth.date(in: calendar)
+            .formatted(.dateTime.month(.wide).year())
+            .capitalized
     }
 
-    private var monthsInDisplayedYear: [Date] {
-        let year = calendar.component(.year, from: displayedMonth)
-        return (1...12).compactMap { month in
-            calendar.date(from: DateComponents(year: year, month: month, day: 1))
-        }
-    }
-
-    private var monthSwipeGesture: some Gesture {
-        DragGesture(minimumDistance: 40)
-            .onEnded { value in
-                guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                changeMonth(by: value.translation.width < 0 ? 1 : -1)
-            }
+    private var isShowingToday: Bool {
+        !showsYearView && selectedMonth == CalendarMonth.from(Date(), calendar: calendar)
     }
 
     private func rides(on date: Date) -> [Ride] {
@@ -210,16 +232,25 @@ struct RideCalendarView: View {
         ridesByDay[calendar.dateComponents([.year, .month, .day], from: date)] != nil
     }
 
-    private func changeMonth(by value: Int) {
-        if let newMonth = calendar.date(byAdding: .month, value: value, to: displayedMonth) {
-            displayedMonth = newMonth.startOfMonth
+    private func toggleYearView() {
+        if showsYearView {
+            showsYearView = false
+        } else {
+            visibleYear = selectedMonth.year
+            showsYearView = true
         }
     }
 
-    private func changeYear(by value: Int) {
-        if let newMonth = calendar.date(byAdding: .year, value: value, to: displayedMonth) {
-            displayedMonth = newMonth.startOfMonth
-        }
+    private func openMonth(_ month: CalendarMonth) {
+        visibleMonth = month
+        showsYearView = false
+    }
+
+    private func jumpToToday() {
+        let today = CalendarMonth.from(Date(), calendar: calendar)
+        visibleMonth = today
+        visibleYear = today.year
+        showsYearView = false
     }
 }
 
@@ -258,9 +289,9 @@ private struct MonthDayCell: View {
 
 private struct MiniMonthView: View {
     let month: Date
-    let weekdaySymbols: [String]
     let ridesByDay: [DateComponents: [Ride]]
     @ObservedObject var ridesViewModel: RidesViewModel
+    let isCurrentMonth: Bool
     let onSelectMonth: () -> Void
 
     private let calendar = Calendar.current
@@ -268,22 +299,15 @@ private struct MiniMonthView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Button(action: onSelectMonth) {
-                Text(month.formatted(.dateTime.month(.wide)))
+                Text(month.formatted(.dateTime.month(.abbreviated)))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Brand.Color.trail)
+                    .foregroundStyle(isCurrentMonth ? Brand.Color.ember : Brand.Color.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .minimumScaleFactor(0.8)
+                    .lineLimit(1)
             }
             .buttonStyle(.plain)
             .padding(.leading, 2)
-
-            HStack(spacing: 0) {
-                ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
-                    Text(symbol)
-                        .font(.system(size: 8, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                }
-            }
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 2) {
                 ForEach(CalendarGrid.days(for: month, calendar: calendar)) { day in
@@ -301,14 +325,14 @@ private struct MiniMonthView: View {
                 }
             }
         }
-        .padding(8)
     }
 
     private func miniDayLabel(_ day: CalendarGridDay) -> some View {
         let isToday = calendar.isDateInToday(day.date)
+        let hasRide = rides(on: day.date) != []
         return Text(day.date, format: .dateTime.day())
             .font(.system(size: 10, weight: isToday ? .bold : .regular))
-            .foregroundStyle(isToday ? Color.white : Brand.Color.ink)
+            .foregroundStyle(isToday ? Color.white : hasRide ? Brand.Color.trail : Brand.Color.ink)
             .frame(maxWidth: .infinity, minHeight: 14)
             .background {
                 if isToday {
@@ -322,6 +346,57 @@ private struct MiniMonthView: View {
     }
 }
 
+// MARK: - Month identity
+
+struct CalendarMonth: Hashable, Comparable, Identifiable {
+    let year: Int
+    let month: Int
+
+    var id: Self { self }
+
+    static func < (lhs: Self, rhs: Self) -> Bool {
+        (lhs.year, lhs.month) < (rhs.year, rhs.month)
+    }
+
+    func date(in calendar: Calendar) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: 1)) ?? Date()
+    }
+
+    static func from(_ date: Date, calendar: Calendar) -> CalendarMonth {
+        let comps = calendar.dateComponents([.year, .month], from: date)
+        return CalendarMonth(year: comps.year ?? 2000, month: comps.month ?? 1)
+    }
+
+    func adding(months value: Int) -> CalendarMonth {
+        var nextYear = year
+        var nextMonth = month + value
+        while nextMonth > 12 {
+            nextMonth -= 12
+            nextYear += 1
+        }
+        while nextMonth < 1 {
+            nextMonth += 12
+            nextYear -= 1
+        }
+        return CalendarMonth(year: nextYear, month: nextMonth)
+    }
+
+    static func months(in year: Int) -> [CalendarMonth] {
+        (1...12).map { CalendarMonth(year: year, month: $0) }
+    }
+
+    static func sequence(from start: CalendarMonth, through end: CalendarMonth) -> [CalendarMonth] {
+        guard start <= end else { return [] }
+        var months: [CalendarMonth] = []
+        var current = start
+        while current <= end {
+            months.append(current)
+            current = current.adding(months: 1)
+        }
+        return months
+    }
+}
+
 // MARK: - Grid helpers
 
 struct CalendarGridDay: Identifiable {
@@ -331,7 +406,7 @@ struct CalendarGridDay: Identifiable {
 }
 
 enum CalendarGrid {
-    static func days(for month: Date, calendar: Calendar) -> [CalendarGridDay] {
+    static func days(for month: Date, calendar: Calendar, minimumRows: Int = 0) -> [CalendarGridDay] {
         guard let monthInterval = calendar.dateInterval(of: .month, for: month) else { return [] }
 
         let firstWeekday = calendar.component(.weekday, from: monthInterval.start)
@@ -352,18 +427,11 @@ enum CalendarGrid {
             date = calendar.date(byAdding: .day, value: 1, to: date) ?? date.addingTimeInterval(86_400)
         }
 
-        while days.count % 7 != 0 {
+        let minimumCount = minimumRows * 7
+        while days.count < minimumCount || days.count % 7 != 0 {
             days.append(CalendarGridDay(date: date, isInDisplayedMonth: false))
             date = calendar.date(byAdding: .day, value: 1, to: date) ?? date.addingTimeInterval(86_400)
         }
         return days
-    }
-}
-
-extension Date {
-    var startOfMonth: Date {
-        let calendar = Calendar.current
-        let comps = calendar.dateComponents([.year, .month], from: self)
-        return calendar.date(from: comps) ?? self
     }
 }

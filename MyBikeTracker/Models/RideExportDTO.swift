@@ -19,6 +19,9 @@ struct RideExportDTO: Codable, Identifiable {
     var elevationGain: Double?
     var bikeId: UUID?
     var lineColorHex: String?
+    var averageHeartRate: Double?
+    var maxHeartRate: Int?
+    var averageCadence: Double?
     var route: [RouteCoordinate]
     var matchedRoute: [RouteCoordinate]?
 
@@ -46,6 +49,9 @@ extension RideExportDTO {
         self.elevationGain = ride.elevationGain
         self.bikeId = ride.bikeId
         self.lineColorHex = ride.lineColorHex
+        self.averageHeartRate = ride.averageHeartRate
+        self.maxHeartRate = ride.maxHeartRate
+        self.averageCadence = ride.averageCadence
         self.route = ride.route.map {
             RouteCoordinate(
                 latitude: $0.latitude,

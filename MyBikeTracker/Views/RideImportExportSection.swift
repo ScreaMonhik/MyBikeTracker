@@ -21,12 +21,13 @@ struct RideImportExportSection: View {
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
+    @State private var showExportWarning = false
 
     var body: some View {
         Section(header: Text(LocalizedStringKey("export_import_section"))) {
             // Export button
             Button {
-                exportRides()
+                showExportWarning = true
             } label: {
                 Label(LocalizedStringKey("export_rides_button"), systemImage: "square.and.arrow.up")
             }
@@ -51,9 +52,21 @@ struct RideImportExportSection: View {
             handleImport(result: result)
         }
         .alert(alertTitle, isPresented: $showAlert) {
-            Button(LocalizedStringKey("no"), role: .cancel) {}    // reuse "OK"-like dismiss
+            Button(LocalizedStringKey("ok_button"), role: .cancel) {}
         } message: {
             Text(alertMessage)
+        }
+        .confirmationDialog(
+            LocalizedStringKey("export_privacy_title"),
+            isPresented: $showExportWarning,
+            titleVisibility: .visible
+        ) {
+            Button(LocalizedStringKey("export_privacy_confirm")) {
+                exportRides()
+            }
+            Button(LocalizedStringKey("end_ride_continue"), role: .cancel) {}
+        } message: {
+            Text(LocalizedStringKey("export_privacy_body"))
         }
     }
 
@@ -62,7 +75,8 @@ struct RideImportExportSection: View {
     private func exportRides() {
         do {
             let data = try ridesViewModel.exportData()
-            let fileName = "rides_\(formattedDate()).json"
+            let fileName = "mybiketracker_backup_\(formattedDate()).json"
+            ProductAnalytics.shared.track(.exportCompleted)
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
             try data.write(to: url)
             exportItem = ExportItem(url: url)
@@ -87,11 +101,13 @@ struct RideImportExportSection: View {
 
             do {
                 let data = try Data(contentsOf: url)
-                let count = try ridesViewModel.importRides(from: data)
+                let summary = try ridesViewModel.importBackup(from: data)
                 alertTitle = NSLocalizedString("import_export_alert_ok", comment: "")
                 alertMessage = String(
-                    format: NSLocalizedString("import_success", comment: ""),
-                    count
+                    format: NSLocalizedString("import_success_full", comment: ""),
+                    Int64(summary.rides),
+                    Int64(summary.bikes),
+                    Int64(summary.journals)
                 )
                 showAlert = true
             } catch {

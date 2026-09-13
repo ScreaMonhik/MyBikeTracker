@@ -18,13 +18,14 @@ struct RideDetailView: View {
 
     var body: some View {
         let rideColor = ride.resolvedLineColor(defaultHex: historyColorHex)
+        let paceScale = ridesViewModel.paceScale(for: ride)
         let usesSpeedHeatmap = ride.usesSpeedHeatmapLine
         let _ = ridesViewModel.routeStyleRevision
         ScrollView {
             VStack(spacing: 16) {
                 Map {
                     if usesSpeedHeatmap {
-                        speedTrackMapContent(slices: ride.speedColoredSlices)
+                        speedTrackMapContent(slices: ride.speedColoredSlices, scale: paceScale)
                     } else {
                         ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
                             if coords.count > 1 {
@@ -47,22 +48,11 @@ struct RideDetailView: View {
                 .padding(.top, 8)
 
                 if usesSpeedHeatmap {
-                    HStack(spacing: 8) {
-                        Text(LocalizedStringKey("speed_legend_slow"))
-                        LinearGradient(
-                            colors: SpeedHeatmap.legendColors,
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .frame(height: 6)
-                        .clipShape(Capsule())
-                        Text(LocalizedStringKey("speed_legend_fast"))
-                    }
-                    .font(Brand.Font.micro)
-                    .foregroundStyle(Brand.Color.muted)
+                    RidePaceDistributionLegend(
+                        slices: ride.speedColoredSlices,
+                        scale: paceScale
+                    )
                     .padding(.horizontal, 20)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(LocalizedStringKey("speed_legend_accessibility"))
                 }
 
                 BrandCard {
@@ -96,6 +86,30 @@ struct RideDetailView: View {
                                 BrandMetric(
                                     title: LocalizedStringKey("elevation_title"),
                                     value: RideFormatters.elevation(meters: ride.resolvedElevationGain),
+                                    size: 18,
+                                    alignment: .leading
+                                )
+                            }
+                            if ride.averageHeartRate > 0 {
+                                BrandMetric(
+                                    title: LocalizedStringKey("sensors_heart_rate"),
+                                    value: String(format: "%.0f", ride.averageHeartRate),
+                                    size: 18,
+                                    alignment: .leading
+                                )
+                            }
+                            if ride.maxHeartRate > 0 {
+                                BrandMetric(
+                                    title: LocalizedStringKey("max_heart_rate_title"),
+                                    value: "\(ride.maxHeartRate)",
+                                    size: 18,
+                                    alignment: .leading
+                                )
+                            }
+                            if ride.averageCadence > 0 {
+                                BrandMetric(
+                                    title: LocalizedStringKey("sensors_cadence"),
+                                    value: String(format: "%.0f", ride.averageCadence),
                                     size: 18,
                                     alignment: .leading
                                 )
