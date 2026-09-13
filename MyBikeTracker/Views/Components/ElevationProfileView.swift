@@ -14,7 +14,8 @@ struct ElevationProfileView: View {
             Chart(samples) { sample in
                 AreaMark(
                     x: .value("Distance", sample.distance),
-                    y: .value("Altitude", displayAltitude(sample.altitude))
+                    yStart: .value("Floor", yDomain.lowerBound),
+                    yEnd: .value("Altitude", displayAltitude(sample.altitude))
                 )
                 .foregroundStyle(Brand.Color.trail.opacity(0.22))
                 LineMark(
@@ -24,6 +25,8 @@ struct ElevationProfileView: View {
                 .foregroundStyle(Brand.Color.trail)
                 .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
             }
+            .chartXScale(domain: xDomain)
+            .chartYScale(domain: yDomain)
             .chartXAxis {
                 AxisMarks { value in
                     AxisGridLine()
@@ -46,6 +49,16 @@ struct ElevationProfileView: View {
             }
             .frame(height: 160)
         }
+    }
+
+    private var xDomain: ClosedRange<Double> {
+        let maxDistance = samples.map(\.distance).max() ?? 0
+        return 0...max(maxDistance, 1)
+    }
+
+    private var yDomain: ClosedRange<Double> {
+        let displayed = samples.map { ElevationSample(id: $0.id, distance: $0.distance, altitude: displayAltitude($0.altitude)) }
+        return ElevationCalculator.chartAltitudeDomain(from: displayed) ?? 0...1
     }
 
     private func displayAltitude(_ meters: Double) -> Double {

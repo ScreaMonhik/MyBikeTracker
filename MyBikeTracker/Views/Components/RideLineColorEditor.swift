@@ -7,6 +7,7 @@ struct RideLineColorEditor: View {
     var compact: Bool = false
     @AppStorage(.historyRouteColorKey) private var defaultHex = RouteLineColor.defaultHistoryHex
     @State private var selection: Color
+    @State private var ignoreSelectionWrite = true
 
     init(ride: Ride, ridesViewModel: RidesViewModel, compact: Bool = false) {
         self.ride = ride
@@ -18,7 +19,7 @@ struct RideLineColorEditor: View {
     }
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: compact ? 8 : 10) {
             if compact {
                 compactEditor
             } else {
@@ -31,8 +32,8 @@ struct RideLineColorEditor: View {
 
             if ride.hasCustomLineColor {
                 Button {
+                    applySelection(RouteLineColor.color(from: defaultHex, fallbackHex: defaultHex), persist: false)
                     ridesViewModel.updateRideLineColor(ride, hex: nil)
-                    selection = RouteLineColor.color(from: defaultHex, fallbackHex: defaultHex)
                 } label: {
                     if compact {
                         Label(LocalizedStringKey("ride_line_color_reset"), systemImage: "arrow.counterclockwise")
@@ -43,16 +44,39 @@ struct RideLineColorEditor: View {
                 }
             }
         }
+        .onAppear {
+            // ColorPicker often emits a color-space conversion on first layout.
+            armSelectionWrites()
+        }
         .onChange(of: selection) { _, newValue in
-            let hex = RouteLineColor.hexString(from: newValue)
-            guard hex != ride.lineColorHex else { return }
-            ridesViewModel.updateRideLineColor(ride, hex: hex)
+            persistSelection(newValue)
         }
         .onChange(of: ridesViewModel.routeStyleRevision) { _, _ in
-            let resolved = ride.resolvedLineColor(defaultHex: defaultHex)
-            if RouteLineColor.hexString(from: selection) != RouteLineColor.hexString(from: resolved) {
-                selection = resolved
-            }
+            applySelection(ride.resolvedLineColor(defaultHex: defaultHex), persist: false)
+        }
+    }
+
+    private func persistSelection(_ color: Color) {
+        guard !ignoreSelectionWrite else { return }
+        let hex = RouteLineColor.hexString(from: color)
+        guard hex != ride.lineColorHex else { return }
+        ridesViewModel.updateRideLineColor(ride, hex: hex)
+    }
+
+    private func applySelection(_ color: Color, persist: Bool) {
+        let hex = RouteLineColor.hexString(from: color)
+        if hex == RouteLineColor.hexString(from: selection) { return }
+        ignoreSelectionWrite = true
+        selection = color
+        if persist {
+            persistSelection(color)
+        }
+        armSelectionWrites()
+    }
+
+    private func armSelectionWrites() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            ignoreSelectionWrite = false
         }
     }
 

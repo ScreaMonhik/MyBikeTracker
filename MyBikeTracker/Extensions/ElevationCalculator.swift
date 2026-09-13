@@ -61,4 +61,14 @@ enum ElevationCalculator {
         }
         return samples
     }
+
+    /// Visible Y range for a profile chart. Does not include sea level unless the ride is actually there.
+    static func chartAltitudeDomain(from samples: [ElevationSample], minimumSpan: Double = 16) -> ClosedRange<Double>? {
+        let altitudes = samples.map(\.altitude)
+        guard let minAltitude = altitudes.min(), let maxAltitude = altitudes.max() else { return nil }
+        let span = max(maxAltitude - minAltitude, minimumSpan)
+        let padding = max(span * 0.18, 4)
+        let mid = (minAltitude + maxAltitude) / 2
+        return (mid - span / 2 - padding)...(mid + span / 2 + padding)
+    }
 }

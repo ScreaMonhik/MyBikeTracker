@@ -24,7 +24,7 @@ struct RideDetailView: View {
         ScrollView {
             VStack(spacing: 16) {
                 Map {
-                    if usesSpeedHeatmap {
+                    if usesSpeedHeatmap && !ride.hasCustomLineColor {
                         speedTrackMapContent(slices: speedSlices)
                     } else {
                         ForEach(Array(ride.displaySegments.enumerated()), id: \.offset) { _, coords in
@@ -47,7 +47,7 @@ struct RideDetailView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
 
-                if usesSpeedHeatmap {
+                if usesSpeedHeatmap && !ride.hasCustomLineColor {
                     HStack(spacing: 8) {
                         Text(LocalizedStringKey("speed_legend_slow"))
                         LinearGradient(
@@ -67,61 +67,63 @@ struct RideDetailView: View {
                 }
 
                 BrandCard {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                        BrandMetric(
-                            title: LocalizedStringKey("distance_title"),
-                            value: RideFormatters.distance(meters: ride.distance),
-                            size: 22,
-                            alignment: .leading
-                        )
-                        BrandMetric(
-                            title: LocalizedStringKey("duration_title"),
-                            value: ride.duration.formattedAsTimer,
-                            size: 22,
-                            alignment: .leading
-                        )
-                        BrandMetric(
-                            title: LocalizedStringKey("average_speed_title"),
-                            value: RideFormatters.speed(kmh: ride.averageSpeed),
-                            size: 18,
-                            alignment: .leading
-                        )
-                        BrandMetric(
-                            title: LocalizedStringKey("max_speed_title"),
-                            value: RideFormatters.speed(kmh: ride.maxSpeed),
-                            size: 18,
-                            alignment: .leading
-                        )
-                        if ride.resolvedElevationGain > 0 {
+                    VStack(alignment: .leading, spacing: 16) {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                             BrandMetric(
-                                title: LocalizedStringKey("elevation_title"),
-                                value: RideFormatters.elevation(meters: ride.resolvedElevationGain),
+                                title: LocalizedStringKey("distance_title"),
+                                value: RideFormatters.distance(meters: ride.distance),
+                                size: 22,
+                                alignment: .leading
+                            )
+                            BrandMetric(
+                                title: LocalizedStringKey("duration_title"),
+                                value: ride.duration.formattedAsTimer,
+                                size: 22,
+                                alignment: .leading
+                            )
+                            BrandMetric(
+                                title: LocalizedStringKey("average_speed_title"),
+                                value: RideFormatters.speed(kmh: ride.averageSpeed),
                                 size: 18,
                                 alignment: .leading
                             )
-                        }
-                        if let bikeName {
                             BrandMetric(
-                                title: LocalizedStringKey("garage_bike_name"),
-                                value: bikeName,
+                                title: LocalizedStringKey("max_speed_title"),
+                                value: RideFormatters.speed(kmh: ride.maxSpeed),
                                 size: 18,
                                 alignment: .leading
                             )
+                            if ride.resolvedElevationGain > 0 {
+                                BrandMetric(
+                                    title: LocalizedStringKey("elevation_title"),
+                                    value: RideFormatters.elevation(meters: ride.resolvedElevationGain),
+                                    size: 18,
+                                    alignment: .leading
+                                )
+                            }
+                            if let bikeName {
+                                BrandMetric(
+                                    title: LocalizedStringKey("garage_bike_name"),
+                                    value: bikeName,
+                                    size: 18,
+                                    alignment: .leading
+                                )
+                            }
                         }
-                    }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(LocalizedStringKey("start_date_title"))
-                            .font(Brand.Font.micro)
-                            .foregroundStyle(Brand.Color.muted)
-                        Text(ride.startDate.formatted(date: .long, time: .shortened))
-                            .font(Brand.Font.headline)
-                            .foregroundStyle(Brand.Color.ink)
-                    }
-                    .padding(.top, 4)
-
-                    RideLineColorEditor(ride: ride, ridesViewModel: ridesViewModel)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(LocalizedStringKey("start_date_title"))
+                                .font(Brand.Font.micro)
+                                .foregroundStyle(Brand.Color.muted)
+                            Text(ride.startDate.formatted(date: .long, time: .shortened))
+                                .font(Brand.Font.headline)
+                                .foregroundStyle(Brand.Color.ink)
+                        }
                         .padding(.top, 4)
+
+                        RideLineColorEditor(ride: ride, ridesViewModel: ridesViewModel)
+                            .padding(.top, 4)
+                    }
                 }
                 .padding(.horizontal, 16)
 
