@@ -92,8 +92,9 @@ struct SpeedColoredSlice: Identifiable {
 
 /// Brand heatmap: teal is slow, ember / red is fast.
 enum SpeedHeatmap {
-    static let bandWidthKmh = 4.0
-    static let maxBand = 10
+    /// Fine enough that neighbouring GPS edges read as a gradient, not solid blocks.
+    static let bandWidthKmh = 1.0
+    static let maxBand = 80
 
     static func fillFraction(forKmh kmh: Double, scale: PaceScale = .default) -> Double {
         let top = max(scale.scaleMaxKmh, 1)
@@ -154,6 +155,47 @@ enum SpeedHeatmap {
     }
 }
 
+/// One continuous outline for a GPS-connected stretch of heatmap slices.
+struct SpeedTrackOutlineRun: Identifiable {
+    let id: String
+    let coordinates: [CLLocationCoordinate2D]
+}
+
+enum SpeedTrackOutline {
+    static func runs(from slices: [SpeedColoredSlice], idPrefix: String = "") -> [SpeedTrackOutlineRun] {
+        var runs: [SpeedTrackOutlineRun] = []
+        var current: [CLLocationCoordinate2D] = []
+
+        func flush() {
+            defer { current = [] }
+            guard current.count > 1 else { return }
+            let first = current[0]
+            let prefix = idPrefix.isEmpty ? "run" : "\(idPrefix)-run"
+            runs.append(
+                SpeedTrackOutlineRun(
+                    id: String(format: "%@-%d-%.5f,%.5f", prefix, runs.count, first.latitude, first.longitude),
+                    coordinates: current
+                )
+            )
+        }
+
+        for slice in slices where slice.coordinates.count > 1 {
+            if let last = current.last, sameCoordinate(last, slice.coordinates[0]) {
+                current.append(contentsOf: slice.coordinates.dropFirst())
+            } else {
+                flush()
+                current = slice.coordinates
+            }
+        }
+        flush()
+        return runs
+    }
+
+    private static func sameCoordinate(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
+        abs(a.latitude - b.latitude) < 1e-9 && abs(a.longitude - b.longitude) < 1e-9
+    }
+}
+
 @MainActor
 func speedTrackMapContent(
     slices: [SpeedColoredSlice],
@@ -168,23 +210,31 @@ func speedTrackMapContent(
             speedKmh: slice.speedKmh
         )
     }
-    return speedTrackPolylines(slices: tagged, scale: scale, lineWidth: lineWidth)
+    return speedTrackPolylines(
+        slices: tagged,
+        runs: SpeedTrackOutline.runs(from: tagged, idPrefix: idPrefix),
+        scale: scale,
+        lineWidth: lineWidth
+    )
 }
 
 @MainActor
 @MapContentBuilder
 private func speedTrackPolylines(
     slices: [SpeedColoredSlice],
+    runs: [SpeedTrackOutlineRun],
     scale: PaceScale,
     lineWidth: CGFloat
 ) -> some MapContent {
+    ForEach(runs) { run in
+        MapPolyline(coordinates: run.coordinates)
+            .stroke(
+                Color.white.opacity(0.9),
+                style: StrokeStyle(lineWidth: lineWidth + 2.5, lineCap: .round, lineJoin: .round)
+            )
+    }
     ForEach(slices) { slice in
         if slice.coordinates.count > 1 {
-            MapPolyline(coordinates: slice.coordinates)
-                .stroke(
-                    Color.white.opacity(0.9),
-                    style: StrokeStyle(lineWidth: lineWidth + 2.5, lineCap: .round, lineJoin: .round)
-                )
             MapPolyline(coordinates: slice.coordinates)
                 .stroke(
                     slice.color(scale: scale),
