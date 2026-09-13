@@ -100,6 +100,30 @@ struct RideDetailView: View {
                                     alignment: .leading
                                 )
                             }
+                            if ride.averageHeartRate > 0 {
+                                BrandMetric(
+                                    title: LocalizedStringKey("sensors_heart_rate"),
+                                    value: String(format: "%.0f", ride.averageHeartRate),
+                                    size: 18,
+                                    alignment: .leading
+                                )
+                            }
+                            if ride.maxHeartRate > 0 {
+                                BrandMetric(
+                                    title: LocalizedStringKey("max_heart_rate_title"),
+                                    value: "\(ride.maxHeartRate)",
+                                    size: 18,
+                                    alignment: .leading
+                                )
+                            }
+                            if ride.averageCadence > 0 {
+                                BrandMetric(
+                                    title: LocalizedStringKey("sensors_cadence"),
+                                    value: String(format: "%.0f", ride.averageCadence),
+                                    size: 18,
+                                    alignment: .leading
+                                )
+                            }
                             if let bikeName {
                                 BrandMetric(
                                     title: LocalizedStringKey("garage_bike_name"),

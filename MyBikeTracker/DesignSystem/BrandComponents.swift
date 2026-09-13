@@ -44,6 +44,11 @@ struct BrandMetric: View {
     let value: String
     var size: CGFloat = 20
     var alignment: HorizontalAlignment = .center
+    @ScaledMetric(relativeTo: .title2) private var scaleBase: CGFloat = 22
+
+    private var scaledSize: CGFloat {
+        size * (scaleBase / 22)
+    }
 
     var body: some View {
         VStack(alignment: alignment, spacing: 4) {
@@ -51,8 +56,9 @@ struct BrandMetric: View {
                 .font(Brand.Font.micro)
                 .foregroundStyle(Brand.Color.muted)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
             Text(value)
-                .font(Brand.Font.metric(size))
+                .font(.system(size: scaledSize, weight: .bold, design: .rounded).monospacedDigit())
                 .foregroundStyle(Brand.Color.ink)
                 .contentTransition(.numericText())
                 .lineLimit(1)

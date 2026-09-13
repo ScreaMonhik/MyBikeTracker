@@ -11,8 +11,10 @@ import CoreLocation
 
 class MapboxRouteService {
 
-    /// Максимальное количество точек, допустимое Mapbox Map Matching API
+    /// Map Matching accepts 100 coordinates per request; longer rides are chunked.
     private let maxCoordinates = 100
+    private let chunkSize = 96
+    private let chunkOverlap = 2
 
     var isConfigured: Bool { !accessToken.isEmpty }
 
@@ -50,32 +52,82 @@ class MapboxRouteService {
             return
         }
 
-        // Если точек больше лимита — прореживаем равномерно
-        let sampled = sampleLocations(locations, maxCount: maxCoordinates)
+        let chunks = chunkLocations(locations)
+        matchChunks(chunks, token: accessToken) { result in
+            completion(result)
+        }
+    }
 
+    // MARK: - Вспомогательные методы
+
+    private func chunkLocations(_ locations: [CLLocation]) -> [[CLLocation]] {
+        guard locations.count > maxCoordinates else { return [locations] }
+        var chunks: [[CLLocation]] = []
+        var start = 0
+        while start < locations.count {
+            let end = min(start + chunkSize, locations.count)
+            chunks.append(Array(locations[start..<end]))
+            if end == locations.count { break }
+            start = max(end - chunkOverlap, start + 1)
+        }
+        return chunks
+    }
+
+    private func matchChunks(
+        _ chunks: [[CLLocation]],
+        token: String,
+        completion: @escaping (Result<[CLLocationCoordinate2D], Error>) -> Void
+    ) {
+        func step(_ index: Int, assembled: [CLLocationCoordinate2D]) {
+            guard index < chunks.count else {
+                completion(.success(assembled))
+                return
+            }
+            matchSingleChunk(chunks[index], token: token) { result in
+                switch result {
+                case .failure(let error):
+                    completion(.failure(error))
+                case .success(let coords):
+                    var next = assembled
+                    if next.isEmpty {
+                        next = coords
+                    } else if coords.count > 1 {
+                        next.append(contentsOf: coords.dropFirst())
+                    }
+                    step(index + 1, assembled: next)
+                }
+            }
+        }
+        step(0, assembled: [])
+    }
+
+    private func matchSingleChunk(
+        _ locations: [CLLocation],
+        token: String,
+        completion: @escaping (Result<[CLLocationCoordinate2D], Error>) -> Void
+    ) {
+        let sampled = sampleLocations(locations, maxCount: maxCoordinates)
         let coordinatesString = sampled
             .map { "\($0.coordinate.longitude),\($0.coordinate.latitude)" }
             .joined(separator: ";")
 
         let baseURL = "https://api.mapbox.com/matching/v5/mapbox/cycling/\(coordinatesString)"
-        let params = "?access_token=\(accessToken)&geometries=geojson"
+        let params = "?access_token=\(token)&geometries=geojson"
 
         guard let url = URL(string: baseURL + params) else {
             completion(.failure(MapboxError.invalidURL))
             return
         }
 
-        let task = URLSession.shared.dataTask(with: url) { data, _, error in
-            if let error = error {
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            if let error {
                 completion(.failure(error))
                 return
             }
-
-            guard let data = data else {
+            guard let data else {
                 completion(.failure(MapboxError.noData))
                 return
             }
-
             do {
                 let geojson = try JSONDecoder().decode(MapboxResponse.self, from: data)
                 let coords = geojson.matchings.first?.geometry.coordinates
@@ -84,14 +136,9 @@ class MapboxRouteService {
             } catch {
                 completion(.failure(error))
             }
-        }
-
-        task.resume()
+        }.resume()
     }
 
-    // MARK: - Вспомогательные методы
-
-    /// Прореживает массив точек до maxCount, выбирая равномерно распределённые
     private func sampleLocations(_ locations: [CLLocation], maxCount: Int) -> [CLLocation] {
         guard locations.count > maxCount else { return locations }
         let step = Double(locations.count - 1) / Double(maxCount - 1)

@@ -13,7 +13,9 @@ struct BikeTrackerWidgetBundle: WidgetBundle {
     var body: some Widget {
         YearlyKmWidget()
         YearlyKmCalendarWidget()
-        BikeTrackerWidgetControl()
         BikeTrackerLiveActivity()
+        if #available(iOS 18.0, *) {
+            BikeTrackerRideControl()
+        }
     }
 }

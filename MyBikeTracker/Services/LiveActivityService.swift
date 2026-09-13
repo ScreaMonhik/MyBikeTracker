@@ -17,10 +17,18 @@ final class LiveActivityService {
     private var activity: Activity<BikeTrackerAttributes>?
     private var startTask: Task<Void, Never>?
 
-    init() {
-        // Crash / force-quit leaves the Dynamic Island up because we only
-        // kept an in-memory handle. Drop leftovers as soon as the app launches.
-        Task { await endAll(content: nil) }
+    init() {}
+
+    func discardOrphanActivities() async {
+        await endAll(content: nil)
+    }
+
+    func adoptExistingOrStart(startDate: Date) {
+        if let existing = currentActivities().first {
+            activity = existing
+            return
+        }
+        start(startDate: startDate)
     }
 
     // MARK: - Start

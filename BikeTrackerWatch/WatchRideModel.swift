@@ -9,6 +9,7 @@ final class WatchRideModel: NSObject, ObservableObject {
     @Published var speed: Double = 0
     @Published var distance: Double = 0
     @Published var isReachable = false
+    @Published var unitSystem: DistanceUnitSystem = .metric
 
     func activate() {
         guard WCSession.isSupported() else { return }
@@ -20,7 +21,8 @@ final class WatchRideModel: NSObject, ObservableObject {
 
     func start() { send(.start) }
     func togglePause() { send(isPaused ? .resume : .pause) }
-    func stop() { send(.stop) }
+    func confirmStop() { send(.stop) }
+    func discard() { send(.discard) }
 
     private func send(_ command: RideRemoteCommand) {
         guard WCSession.isSupported() else { return }
@@ -50,6 +52,10 @@ final class WatchRideModel: NSObject, ObservableObject {
         }
         if let distance = message[RideRemoteKey.distance] as? Double {
             self.distance = distance
+        }
+        if let raw = message[RideRemoteKey.unitSystem] as? String,
+           let system = DistanceUnitSystem(rawValue: raw) {
+            unitSystem = system
         }
     }
 

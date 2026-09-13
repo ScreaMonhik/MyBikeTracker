@@ -44,11 +44,18 @@ enum Brand {
 
     enum Font {
         static func display(_ size: CGFloat, weight: SwiftUI.Font.Weight = .bold) -> SwiftUI.Font {
-            .system(size: size, weight: weight, design: .rounded)
+            let style: SwiftUI.Font.TextStyle
+            switch size {
+            case 28...: style = .title
+            case 22...: style = .title2
+            default: style = .title3
+            }
+            return .system(style, design: .rounded).weight(weight)
         }
 
         static func metric(_ size: CGFloat = 22) -> SwiftUI.Font {
-            .system(size: size, weight: .bold, design: .rounded).monospacedDigit()
+            let style: SwiftUI.Font.TextStyle = size >= 22 ? .title2 : .title3
+            return .system(style, design: .rounded).weight(.bold).monospacedDigit()
         }
 
         static let title = SwiftUI.Font.system(.title2, design: .rounded).weight(.bold)

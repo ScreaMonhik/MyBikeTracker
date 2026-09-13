@@ -25,30 +25,82 @@ final class LocationService: NSObject, ObservableObject {
     /// Максимально допустимая погрешность GPS (в метрах)
     private let maximumHorizontalAccuracy: Double = 30.0
 
+    var isAuthorized: Bool {
+        authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse
+    }
+
+    var isDenied: Bool {
+        authorizationStatus == .denied || authorizationStatus == .restricted
+    }
+
     override init() {
         super.init()
 
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+        locationManager.allowsBackgroundLocationUpdates = false
+        locationManager.pausesLocationUpdatesAutomatically = true
         locationManager.activityType = .fitness
         locationManager.distanceFilter = minimumDistanceFilter
+        authorizationStatus = locationManager.authorizationStatus
+    }
 
-        locationManager.requestAlwaysAuthorization()
-        // Сразу начинаем получать позицию для отображения на карте
+    func requestWhenInUse() {
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        default:
+            break
+        }
+    }
+
+    func requestAlwaysForActiveRide() {
+        if locationManager.authorizationStatus == .authorizedWhenInUse {
+            locationManager.requestAlwaysAuthorization()
+        }
+    }
+
+    func prepareForForegroundMap() {
+        requestWhenInUse()
+        guard isAuthorized else { return }
+        if !isRecording {
+            locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+            locationManager.allowsBackgroundLocationUpdates = false
+            locationManager.pausesLocationUpdatesAutomatically = true
+        }
         locationManager.startUpdatingLocation()
+    }
+
+    func pauseForegroundUpdates() {
+        guard !isRecording else { return }
+        locationManager.stopUpdatingLocation()
     }
 
     // MARK: - Tracking (запись маршрута)
 
     func startTracking() {
         recordedLocations = []
+        beginRideRecording(resetTrack: false)
+    }
+
+    func beginRideRecording(resetTrack: Bool) {
+        if resetTrack {
+            recordedLocations = []
+        }
         isRecording = true
+        requestWhenInUse()
+        requestAlwaysForActiveRide()
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.startUpdatingLocation()
     }
 
     func stopTracking() {
         isRecording = false
+        locationManager.allowsBackgroundLocationUpdates = false
+        locationManager.pausesLocationUpdatesAutomatically = true
+        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
     }
 
     func pauseTracking() {
@@ -57,6 +109,15 @@ final class LocationService: NSObject, ObservableObject {
 
     func resumeTracking() {
         isRecording = true
+        beginRideRecording(resetTrack: false)
+    }
+
+    func restoreRecording(locations: [CLLocation], recording: Bool) {
+        recordedLocations = locations
+        isRecording = recording
+        if let last = locations.last {
+            currentLocation = last
+        }
     }
 
     #if DEBUG
@@ -353,10 +414,20 @@ extension LocationService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         DispatchQueue.main.async {
             self.authorizationStatus = manager.authorizationStatus
-            // Если разрешение получено — стартуем обновление позиции
-            if manager.authorizationStatus == .authorizedAlways ||
-               manager.authorizationStatus == .authorizedWhenInUse {
-                manager.startUpdatingLocation()
+            switch manager.authorizationStatus {
+            case .authorizedAlways, .authorizedWhenInUse:
+                ProductAnalytics.shared.track(.locationAuthorized)
+                if self.isRecording {
+                    manager.allowsBackgroundLocationUpdates = true
+                    manager.startUpdatingLocation()
+                }
+            case .denied, .restricted:
+                ProductAnalytics.shared.track(.locationDenied)
+                if !self.isRecording {
+                    manager.stopUpdatingLocation()
+                }
+            default:
+                break
             }
         }
     }

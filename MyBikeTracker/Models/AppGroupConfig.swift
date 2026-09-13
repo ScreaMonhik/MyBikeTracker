@@ -9,7 +9,8 @@
 import Foundation
 
 enum AppGroup {
-    /// The App Group container identifier shared by the main app and all extensions.
+    /// Shared by the iPhone app and widget. The bundle IDs use `dimsun.*`; this
+    /// existing App Group ID is kept so widgets and live-ride checkpoints keep working.
     static let id = "group.com.sunko.mybiketracker"
 
     /// UserDefaults key for the widget ride data array.

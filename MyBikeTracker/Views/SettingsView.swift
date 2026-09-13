@@ -134,6 +134,39 @@ struct SettingsView: View {
 
                 RideImportExportSection(ridesViewModel: ridesViewModel)
 
+                Section {
+                    NavigationLink {
+                        PrivacyPolicyView()
+                    } label: {
+                        Label(LocalizedStringKey("privacy_policy_title"), systemImage: "hand.raised")
+                    }
+                    if let url = AppLegal.privacyPolicyURL {
+                        Link(destination: url) {
+                            Label(LocalizedStringKey("privacy_policy_open_web"), systemImage: "safari")
+                        }
+                    }
+                } header: {
+                    Text(LocalizedStringKey("privacy_section"))
+                } footer: {
+                    Text(LocalizedStringKey("privacy_section_footer"))
+                }
+
+                Section {
+                    if let crash = ProductAnalytics.shared.lastCrashSummary {
+                        Text(crash)
+                            .font(Brand.Font.caption)
+                            .foregroundStyle(Brand.Color.muted)
+                    } else {
+                        Text(LocalizedStringKey("diagnostics_no_crashes"))
+                            .foregroundStyle(Brand.Color.muted)
+                    }
+                    Text(LocalizedStringKey("diagnostics_events_footer"))
+                        .font(Brand.Font.caption)
+                        .foregroundStyle(Brand.Color.muted)
+                } header: {
+                    Text(LocalizedStringKey("diagnostics_section"))
+                }
+
                 #if DEBUG
                 DeveloperSettingsSection(
                     mapViewModel: mapViewModel,

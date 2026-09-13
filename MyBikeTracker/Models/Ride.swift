@@ -19,6 +19,9 @@ final class Ride {
     var averageSpeed: Double  // км/ч
     var maxSpeed: Double      // км/ч
     var elevationGain: Double = 0
+    var averageHeartRate: Double = 0
+    var maxHeartRate: Int = 0
+    var averageCadence: Double = 0
     var bikeId: UUID?
     /// Custom map line color as `#RRGGBB`. `nil` uses the default map color from Settings.
     var lineColorHex: String? = nil
@@ -176,7 +179,10 @@ final class Ride {
         matchedRoute: [CLLocationCoordinate2D]? = nil,
         elevationGain: Double = 0,
         bikeId: UUID? = nil,
-        altitudes: [Double?] = []
+        altitudes: [Double?] = [],
+        averageHeartRate: Double = 0,
+        maxHeartRate: Int = 0,
+        averageCadence: Double = 0
     ) {
         self.id = UUID()
         self.startDate = startDate
@@ -186,6 +192,9 @@ final class Ride {
         self.averageSpeed = averageSpeed
         self.maxSpeed = maxSpeed
         self.elevationGain = elevationGain
+        self.averageHeartRate = averageHeartRate
+        self.maxHeartRate = maxHeartRate
+        self.averageCadence = averageCadence
         self.bikeId = bikeId
 
         // Инициализируем хранимые поля перед использованием сеттеров
@@ -215,7 +224,10 @@ final class Ride {
         duration: TimeInterval,
         matchedRoute: [CLLocationCoordinate2D]? = nil,
         elevationGain: Double? = nil,
-        bikeId: UUID? = nil
+        bikeId: UUID? = nil,
+        averageHeartRate: Double = 0,
+        maxHeartRate: Int = 0,
+        averageCadence: Double = 0
     ) {
         self.init(
             route: locations.map(\.coordinate),
@@ -227,7 +239,10 @@ final class Ride {
             duration: duration,
             matchedRoute: matchedRoute,
             elevationGain: elevationGain ?? ElevationCalculator.gain(from: locations),
-            bikeId: bikeId
+            bikeId: bikeId,
+            averageHeartRate: averageHeartRate,
+            maxHeartRate: maxHeartRate,
+            averageCadence: averageCadence
         )
         self.route = locations.map { Coordinate($0) }
     }

@@ -60,6 +60,21 @@ struct TrackerView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
 
+                if viewModel.restoredRideBanner {
+                    Text(LocalizedStringKey("ride_restored_banner"))
+                        .font(Brand.Font.caption)
+                        .foregroundStyle(Brand.Color.ink)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .liquidGlass(in: Capsule())
+                        .padding(.bottom, 8)
+                }
+
+                if !viewModel.locationService.isAuthorized {
+                    LocationPermissionView(locationService: viewModel.locationService)
+                        .padding(.bottom, 10)
+                }
+
                 if !isRideActive, !bikes.isEmpty {
                     bikePicker
                         .padding(.horizontal, 16)
@@ -93,6 +108,7 @@ struct TrackerView: View {
         )
         .ignoresSafeArea(edges: [.top, .horizontal])
         .onAppear {
+            viewModel.locationService.prepareForForegroundMap()
             viewModel.forceAutoCenter()
         }
     }
@@ -250,9 +266,14 @@ struct TrackerView: View {
                     prominent: true,
                     tint: Brand.Color.ember
                 ) {
+                    if viewModel.locationService.isDenied {
+                        BrandHaptics.warning()
+                        return
+                    }
                     BrandHaptics.success()
                     viewModel.startTracking()
                 }
+                .disabled(viewModel.locationService.isDenied)
             } else {
                 GlassActionButton(
                     title: viewModel.isPaused

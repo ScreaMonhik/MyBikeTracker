@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(WidgetKit) && os(iOS)
 import WidgetKit
+#endif
 
 enum DistanceUnitSystem: String, CaseIterable, Identifiable {
     case metric
@@ -18,7 +20,9 @@ enum UnitPreferences {
     static func set(_ system: DistanceUnitSystem) {
         UserDefaults.standard.set(system.rawValue, forKey: PreferenceKey.distanceUnitSystem)
         sharedDefaults.set(system.rawValue, forKey: PreferenceKey.distanceUnitSystem)
+        #if canImport(WidgetKit) && os(iOS)
         WidgetCenter.shared.reloadAllTimelines()
+        #endif
     }
 
     static var sharedDefaults: UserDefaults {

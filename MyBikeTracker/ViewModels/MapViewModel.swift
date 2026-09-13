@@ -70,6 +70,8 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
     /// Полноэкранное подтверждение завершения поездки
     @Published var isEndRideConfirmationPresented = false
+    @Published var pendingReviewPrompt = false
+    @Published var restoredRideBanner = false
 
     var isRideInProgress: Bool {
         isTrackingActive || startTime != nil
@@ -151,6 +153,15 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
     /// Последние значения, отправленные в Live Activity — чтобы не слать дубликаты
     private var lastLiveActivitySignature: (elapsed: Int, speed: Int, distance: Int, paused: Bool)?
+
+    private var heartRateSum = 0
+    private var heartRateCount = 0
+    private var peakHeartRate = 0
+    private var cadenceSum = 0.0
+    private var cadenceCount = 0
+    private var lastCheckpointAt = Date.distantPast
+    private var lastCheckpointPointCount = 0
+    private var didAttemptRestore = false
 
     private var gapFills: [String: [CLLocationCoordinate2D]] = [:]
     private var fillingGapKeys = Set<String>()
@@ -325,7 +336,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: startLoc.coordinate))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
-        request.transportType = .automobile
+        request.transportType = .cycling
 
         do {
             let directions = MKDirections(request: request)
@@ -414,6 +425,12 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             currentRideIsSimulated = false
         }
         #endif
+        #if DEBUG
+        let allowWithoutGPS = isDeveloperSimulationActive
+        #else
+        let allowWithoutGPS = false
+        #endif
+        if locationService.isDenied && !allowWithoutGPS { return }
         isTrackingActive = true
 
         startTime = Date()
@@ -428,9 +445,14 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         maxSpeed = 0
         traveledDistance = 0
         elevationGain = 0
+        resetSensorAverages()
+        lastCheckpointAt = .distantPast
+        lastCheckpointPointCount = 0
 
         locationService.startTracking()
+        sensorService.prepareKnownSensorsIfNeeded()
         startMetrics()
+        ProductAnalytics.shared.track(.rideStart)
 
         // Центрируем карту сразу при старте
         if locationService.currentLocation != nil {
@@ -443,6 +465,7 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         }
 
         liveActivityService?.start(startDate: startTime ?? Date())
+        writeCheckpoint()
         pushWatchState()
     }
 
@@ -458,6 +481,88 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
     func cancelStopTracking() {
         isEndRideConfirmationPresented = false
+    }
+
+    var isRideAccidental: Bool {
+        RidePersistencePolicy.isAccidental(distance: traveledDistance, duration: elapsedTime)
+    }
+
+    func discardRide() {
+        isTrackingActive = false
+        isEndRideConfirmationPresented = false
+        #if DEBUG
+        locationService.stopRideSimulation()
+        isDeveloperSimulationActive = false
+        #endif
+        locationService.stopTracking()
+        stopMetrics()
+        let finalElapsed = elapsedTime
+        let finalSpeed = currentSpeed
+        let finalDistance = traveledDistance
+        Task { await liveActivityService?.stop(elapsed: finalElapsed, speed: finalSpeed, distance: finalDistance) }
+        RideCheckpointStore.clear()
+        resetLiveRideState()
+        pushWatchState()
+        ProductAnalytics.shared.track(.rideDiscard)
+    }
+
+    func restoreInterruptedRideIfNeeded() {
+        guard !didAttemptRestore else { return }
+        didAttemptRestore = true
+        guard let checkpoint = RideCheckpointStore.load() else {
+            Task { await liveActivityService?.discardOrphanActivities() }
+            return
+        }
+
+        startTime = checkpoint.startTime
+        elapsedTime = checkpoint.elapsedTime
+        totalPausedTime = checkpoint.totalPausedTime
+        pauseStartTime = checkpoint.pauseStartTime
+        isPaused = checkpoint.isPaused
+        isAutoPaused = checkpoint.isAutoPaused
+        traveledDistance = checkpoint.traveledDistance
+        elevationGain = checkpoint.elevationGain
+        maxSpeed = checkpoint.maxSpeed
+        averageSpeed = checkpoint.averageSpeed
+        isTrackingActive = true
+        lastDistanceCount = checkpoint.locations.count
+        heartRateSum = checkpoint.heartRateSum
+        heartRateCount = checkpoint.heartRateCount
+        peakHeartRate = checkpoint.maxHeartRate
+        cadenceSum = checkpoint.cadenceSum
+        cadenceCount = checkpoint.cadenceCount
+        lastCheckpointPointCount = checkpoint.locations.count
+
+        let locations = checkpoint.locations.map(\.clLocation)
+        locationService.restoreRecording(locations: locations, recording: !checkpoint.isPaused)
+        locationService.beginRideRecording(resetTrack: false)
+        if checkpoint.isPaused {
+            locationService.pauseTracking()
+        } else {
+            startMetrics()
+        }
+        sensorService.prepareKnownSensorsIfNeeded()
+        updateLiveTrack(from: locations)
+        liveActivityService?.adoptExistingOrStart(startDate: checkpoint.startTime)
+        restoredRideBanner = true
+        pushWatchState()
+        ProductAnalytics.shared.track(.rideRestore, ["points": "\(locations.count)"])
+    }
+
+    func handleScenePhase(_ phase: ScenePhase) {
+        switch phase {
+        case .active:
+            locationService.prepareForForegroundMap()
+            restoreInterruptedRideIfNeeded()
+        case .inactive, .background:
+            if isRideInProgress {
+                writeCheckpoint()
+            } else {
+                locationService.pauseForegroundUpdates()
+            }
+        @unknown default:
+            break
+        }
     }
 
     /// Останавливает трекинг и сохраняет поездку
@@ -483,16 +588,19 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         let elevation = ElevationCalculator.gain(from: locations)
         let bikeUUID = UUID(uuidString: selectedBikeId)
         let recoveredFills = gapFills
+        let avgHeart = heartRateCount > 0 ? Double(heartRateSum) / Double(heartRateCount) : 0
+        let peakHeart = peakHeartRate
+        let avgCadence = cadenceCount > 0 ? cadenceSum / Double(cadenceCount) : 0
 
         let finalElapsed = elapsedTime
         let finalSpeed = currentSpeed
         let finalDistance = traveledDistance
         Task { await liveActivityService?.stop(elapsed: finalElapsed, speed: finalSpeed, distance: finalDistance) }
 
+        RideCheckpointStore.clear()
         resetLiveRideState()
         pushWatchState()
 
-        // Save GPS immediately so a missing Mapbox token cannot drop the ride.
         let ride = persistRide(
             locations: locations,
             start: start,
@@ -503,7 +611,10 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             maxSpeed: maxSp,
             elevationGain: elevation,
             bikeId: bikeUUID,
-            matched: []
+            matched: [],
+            averageHeartRate: avgHeart,
+            maxHeartRate: peakHeart,
+            averageCadence: avgCadence
         )
 
         Task {
@@ -527,6 +638,8 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         isAutoPaused = auto
         pauseStartTime = Date()
         locationService.pauseTracking()
+        ProductAnalytics.shared.track(.ridePause)
+        writeCheckpoint()
         #if DEBUG
         locationService.pauseRideSimulationClock()
         #endif
@@ -548,6 +661,8 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         }
         pauseStartTime = nil
         locationService.resumeTracking()
+        ProductAnalytics.shared.track(.rideResume)
+        writeCheckpoint()
         #if DEBUG
         locationService.resumeRideSimulationClock()
         #endif
@@ -612,8 +727,19 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             }
         }
 
+        if let heartRate = sensorService.heartRate, heartRate > 0 {
+            heartRateSum += heartRate
+            heartRateCount += 1
+            peakHeartRate = max(peakHeartRate, heartRate)
+        }
+        if let cadence = sensorService.cadenceRPM, cadence > 0 {
+            cadenceSum += cadence
+            cadenceCount += 1
+        }
+
         calculateTraveledDistance()
         elevationGain = ElevationCalculator.gain(from: locationService.recordedLocations)
+        maybeWriteCheckpoint()
 
         let elapsedHours = elapsedTime / 3600
         if elapsedHours > 0 {
@@ -728,7 +854,10 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         maxSpeed: Double,
         elevationGain: Double,
         bikeId: UUID?,
-        matched: [CLLocationCoordinate2D]
+        matched: [CLLocationCoordinate2D],
+        averageHeartRate: Double = 0,
+        maxHeartRate: Int = 0,
+        averageCadence: Double = 0
     ) -> Ride? {
         guard let start else { return nil }
 
@@ -742,10 +871,20 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
             duration: duration,
             matchedRoute: matched.isEmpty ? nil : matched,
             elevationGain: elevationGain,
-            bikeId: bikeId
+            bikeId: bikeId,
+            averageHeartRate: averageHeartRate,
+            maxHeartRate: maxHeartRate,
+            averageCadence: averageCadence
         )
 
         ridesViewModel?.addRide(ride)
+        ProductAnalytics.shared.track(.rideSave, [
+            "distance": String(Int(distance)),
+            "duration": String(Int(duration))
+        ])
+        if ReviewPrompt.shouldPrompt(afterSavingDistance: distance) {
+            pendingReviewPrompt = true
+        }
 
         #if DEBUG
         let skipHealthKit = currentRideIsSimulated
@@ -756,7 +895,11 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
 
         if healthKitEnabled, !skipHealthKit, let hk = healthKitService {
             Task {
-                try? await hk.saveWorkout(ride: ride, locations: locations)
+                do {
+                    try await hk.saveWorkout(ride: ride, locations: locations)
+                } catch {
+                    ProductAnalytics.shared.track(.healthKitSaveFailed, ["error": error.localizedDescription])
+                }
             }
         }
 
@@ -779,6 +922,53 @@ final class MapViewModel: NSObject, ObservableObject, MKLocalSearchCompleterDele
         startTime = nil
         lastDistanceCount = 0
         lastLiveActivitySignature = nil
+        lastCheckpointAt = .distantPast
+        lastCheckpointPointCount = 0
+        resetSensorAverages()
+        restoredRideBanner = false
+    }
+
+    private func resetSensorAverages() {
+        heartRateSum = 0
+        heartRateCount = 0
+        peakHeartRate = 0
+        cadenceSum = 0
+        cadenceCount = 0
+    }
+
+    private func maybeWriteCheckpoint() {
+        guard isRideInProgress else { return }
+        let points = locationService.recordedLocations.count
+        let now = Date()
+        let due = points - lastCheckpointPointCount >= 8 || now.timeIntervalSince(lastCheckpointAt) >= 12
+        guard due else { return }
+        writeCheckpoint()
+    }
+
+    private func writeCheckpoint() {
+        guard let startTime else { return }
+        let checkpoint = RideCheckpoint(
+            startTime: startTime,
+            elapsedTime: elapsedTime,
+            totalPausedTime: totalPausedTime,
+            pauseStartTime: pauseStartTime,
+            isPaused: isPaused,
+            isAutoPaused: isAutoPaused,
+            traveledDistance: traveledDistance,
+            elevationGain: elevationGain,
+            maxSpeed: maxSpeed,
+            averageSpeed: averageSpeed,
+            selectedBikeId: selectedBikeId,
+            locations: locationService.recordedLocations.map(CheckpointLocation.init),
+            heartRateSum: heartRateSum,
+            heartRateCount: heartRateCount,
+            maxHeartRate: peakHeartRate,
+            cadenceSum: cadenceSum,
+            cadenceCount: cadenceCount
+        )
+        RideCheckpointStore.save(checkpoint)
+        lastCheckpointAt = Date()
+        lastCheckpointPointCount = checkpoint.locations.count
     }
 
     func makeLocationSharePayload() -> LocationSharePayload? {

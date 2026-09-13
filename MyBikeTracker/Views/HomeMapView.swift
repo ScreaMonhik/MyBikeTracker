@@ -42,6 +42,7 @@ struct HomeMapView: View {
                 )
                 .ignoresSafeArea(edges: [.top, .horizontal])
                 .onAppear {
+                    viewModel.locationService.prepareForForegroundMap()
                     viewModel.forceAutoCenter()
                 }
             }

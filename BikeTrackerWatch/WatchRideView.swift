@@ -2,53 +2,70 @@ import SwiftUI
 
 struct WatchRideView: View {
     @ObservedObject var session: WatchRideModel
+    @State private var showStopConfirm = false
 
     var body: some View {
         VStack(spacing: 8) {
             Text(formattedTime)
                 .font(.title2.monospacedDigit().weight(.bold))
+                .minimumScaleFactor(0.7)
 
             HStack {
                 VStack {
-                    Text(String(format: "%.1f", session.speed))
+                    Text(RideFormatters.speedValue(kmh: session.speed, system: session.unitSystem))
                         .font(.headline.monospacedDigit())
-                    Text("km/h")
+                    Text(RideFormatters.speedUnitLabel(system: session.unitSystem))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 VStack {
-                    Text(String(format: "%.2f", session.distance / 1000))
+                    Text(RideFormatters.distanceValue(meters: session.distance, system: session.unitSystem))
                         .font(.headline.monospacedDigit())
-                    Text("km")
+                    Text(RideFormatters.distanceUnitLabel(system: session.unitSystem))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
 
             if session.isTracking {
-                Button(session.isPaused ? "Resume" : "Pause") {
+                Button(session.isPaused ? String(localized: "watch_resume") : String(localized: "watch_pause")) {
                     session.togglePause()
                 }
                 .tint(session.isPaused ? .green : .orange)
 
-                Button("Stop", role: .destructive) {
-                    session.stop()
+                Button(String(localized: "watch_stop"), role: .destructive) {
+                    showStopConfirm = true
                 }
             } else {
-                Button("Start") {
+                Button(String(localized: "watch_start")) {
                     session.start()
                 }
                 .tint(.green)
             }
 
             if !session.isReachable {
-                Text("Open iPhone app")
+                Text(String(localized: "watch_open_iphone"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 4)
+        .confirmationDialog(
+            String(localized: "watch_end_title"),
+            isPresented: $showStopConfirm,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "watch_end_save")) {
+                session.confirmStop()
+            }
+            Button(String(localized: "watch_end_discard"), role: .destructive) {
+                session.discard()
+            }
+            Button(String(localized: "watch_cancel"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "watch_end_body"))
+        }
     }
 
     private var formattedTime: String {

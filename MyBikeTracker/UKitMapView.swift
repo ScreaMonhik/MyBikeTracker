@@ -65,6 +65,26 @@ struct UIKitMapView: View {
         return Color(uiColor: lineColor)
     }
 
+    private var visibleRides: [Ride] {
+        if rides.count <= 40 { return rides }
+        var limited = Array(rides.prefix(40))
+        if let selected = rides.first(where: { $0.id == selectedRideID }),
+           !limited.contains(where: { $0.id == selected.id }) {
+            limited.insert(selected, at: 0)
+        }
+        return limited
+    }
+
+    private var drawsHeatmaps: Bool {
+        cameraDistance < 14_000
+    }
+
+    private func shouldDrawHeatmap(for ride: Ride) -> Bool {
+        guard ride.usesSpeedHeatmapLine else { return false }
+        if ride.id == selectedRideID { return true }
+        return drawsHeatmaps && visibleRides.prefix(12).contains(where: { $0.id == ride.id })
+    }
+
     var body: some View {
         let _ = routeStyleRevision
         MapReader { proxy in
@@ -104,10 +124,10 @@ struct UIKitMapView: View {
                     }
                 }
 
-                ForEach(rides) { ride in
+                ForEach(visibleRides) { ride in
                     let rideColor = ride.resolvedLineColor(defaultHex: defaultRideColorHex)
                     let width: CGFloat = ride.id == selectedRideID ? 7 : 4
-                    if ride.usesSpeedHeatmapLine {
+                    if shouldDrawHeatmap(for: ride) {
                         speedTrackMapContent(
                             slices: ride.speedColoredSlices,
                             lineWidth: width,

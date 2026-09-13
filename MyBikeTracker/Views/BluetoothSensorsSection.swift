@@ -72,6 +72,9 @@ struct BluetoothSensorsSection: View {
         } footer: {
             Text(LocalizedStringKey("sensors_footer"))
         }
+        .onAppear {
+            sensorService.prepareIfNeeded()
+        }
     }
 
     private func icon(for kind: DiscoveredSensor.Kind) -> String {

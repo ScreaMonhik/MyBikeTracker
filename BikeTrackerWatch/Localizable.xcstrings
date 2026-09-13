@@ -1,0 +1,86 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "watch_start": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Start" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Старт" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Старт" } }
+      }
+    },
+    "watch_pause": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Pause" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Пауза" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Пауза" } }
+      }
+    },
+    "watch_resume": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Resume" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Продолжить" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Продовжити" } }
+      }
+    },
+    "watch_stop": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Stop" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Стоп" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Стоп" } }
+      }
+    },
+    "watch_open_iphone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open iPhone app" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Откройте приложение на iPhone" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Відкрийте програму на iPhone" } }
+      }
+    },
+    "watch_end_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Finish this ride?" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Завершить поездку?" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Завершити поїздку?" } }
+      }
+    },
+    "watch_end_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save it to history or discard this session." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Сохранить в историю или отменить сессию." } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Зберегти в історію або скасувати сесію." } }
+      }
+    },
+    "watch_end_save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Finish & save" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Завершить и сохранить" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Завершити і зберегти" } }
+      }
+    },
+    "watch_end_discard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Discard" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Не сохранять" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Не зберігати" } }
+      }
+    },
+    "watch_cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cancel" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Отмена" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Скасувати" } }
+      }
+    }
+  },
+  "version": "1.0"
+}

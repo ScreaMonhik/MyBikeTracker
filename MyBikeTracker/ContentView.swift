@@ -1,11 +1,5 @@
-//
-//  ContentView.swift
-//  MyBikeTracker
-//
-//  Created by Dima Sunko on 19.05.2025.
-//
-
 import SwiftUI
+import StoreKit
 
 enum AppTab: Hashable, CaseIterable, Identifiable {
     case map
@@ -19,11 +13,15 @@ enum AppTab: Hashable, CaseIterable, Identifiable {
 struct ContentView: View {
     @StateObject var mapViewModel: MapViewModel
     @StateObject var ridesViewModel: RidesViewModel
+    var storeIssue: PersistenceIssue?
     @State private var selectedTab: AppTab = .map
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.requestReview) private var requestReview
 
-    init(mapViewModel: MapViewModel, ridesViewModel: RidesViewModel) {
+    init(mapViewModel: MapViewModel, ridesViewModel: RidesViewModel, storeIssue: PersistenceIssue? = nil) {
         _mapViewModel = StateObject(wrappedValue: mapViewModel)
         _ridesViewModel = StateObject(wrappedValue: ridesViewModel)
+        self.storeIssue = storeIssue
     }
 
     var body: some View {
@@ -54,6 +52,11 @@ struct ContentView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             BrandTabBar(selection: $selectedTab)
         }
+        .overlay(alignment: .top) {
+            if let storeIssue {
+                PersistenceIssueBanner(issue: storeIssue)
+            }
+        }
         .onOpenURL { url in
             guard url.scheme?.lowercased() == "mybiketracker" else { return }
             switch url.host?.lowercased() {
@@ -68,8 +71,31 @@ struct ContentView: View {
             EndRideConfirmationView(
                 viewModel: mapViewModel,
                 onConfirm: { mapViewModel.confirmStopTracking() },
+                onDiscard: { mapViewModel.discardRide() },
                 onCancel: { mapViewModel.cancelStopTracking() }
             )
+        }
+        .alert(
+            LocalizedStringKey("store_save_failed_title"),
+            isPresented: Binding(
+                get: { ridesViewModel.lastSaveError != nil },
+                set: { if !$0 { ridesViewModel.lastSaveError = nil } }
+            )
+        ) {
+            Button(LocalizedStringKey("ok_button"), role: .cancel) {}
+        } message: {
+            Text(ridesViewModel.lastSaveError ?? "")
+        }
+        .onAppear {
+            mapViewModel.restoreInterruptedRideIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            mapViewModel.handleScenePhase(phase)
+        }
+        .onChange(of: mapViewModel.pendingReviewPrompt) { _, shouldPrompt in
+            guard shouldPrompt else { return }
+            requestReview()
+            mapViewModel.pendingReviewPrompt = false
         }
     }
 }

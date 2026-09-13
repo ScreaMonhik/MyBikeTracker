@@ -47,7 +47,19 @@ final class BluetoothSensorService: NSObject, ObservableObject {
 
     override init() {
         super.init()
+    }
+
+    func prepareIfNeeded() {
+        guard central == nil else { return }
         central = CBCentralManager(delegate: self, queue: .main)
+    }
+
+    func prepareKnownSensorsIfNeeded() {
+        let defaults = UserDefaults.standard
+        let hasKnown = defaults.string(forKey: PreferenceKey.lastHeartRateSensorId) != nil
+            || defaults.string(forKey: PreferenceKey.lastCadenceSensorId) != nil
+        guard hasKnown else { return }
+        prepareIfNeeded()
     }
 
     var hasLiveMetrics: Bool {
@@ -55,6 +67,7 @@ final class BluetoothSensorService: NSObject, ObservableObject {
     }
 
     func startScan() {
+        prepareIfNeeded()
         guard let central, central.state == .poweredOn else { return }
         discovered = []
         isScanning = true

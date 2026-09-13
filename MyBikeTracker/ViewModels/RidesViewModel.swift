@@ -26,6 +26,7 @@ final class RidesViewModel: ObservableObject {
     @Published var journals: [DayJournal] = []
     /// Bumps when a ride line color changes so the map redraws.
     @Published private(set) var routeStyleRevision = 0
+    @Published var lastSaveError: String?
 
     private let modelContext: ModelContext
 
@@ -46,7 +47,13 @@ final class RidesViewModel: ObservableObject {
         let descriptor = FetchDescriptor<Ride>(
             sortBy: [SortDescriptor(\.startDate, order: .reverse)]
         )
-        rides = (try? modelContext.fetch(descriptor)) ?? []
+        do {
+            rides = try modelContext.fetch(descriptor)
+            lastSaveError = nil
+        } catch {
+            lastSaveError = error.localizedDescription
+            rides = []
+        }
         WidgetDataService.shared.sync(rides: rides)
     }
 
@@ -235,76 +242,172 @@ final class RidesViewModel: ObservableObject {
 
     // MARK: - Export
 
-    /// Encodes all rides into JSON Data ready for sharing.
     func exportData() throws -> Data {
-        let dtos = rides.map { RideExportDTO(ride: $0) }
+        try encodeBackup(includePhotos: true)
+    }
+
+    func encodeBackup(includePhotos: Bool) throws -> Data {
+        let backup = AppBackupDTO(
+            version: 2,
+            exportedAt: Date(),
+            rides: rides.map { RideExportDTO(ride: $0) },
+            bikes: bikes.map { BikeExportDTO(bike: $0) },
+            journals: journals.map { journal in
+                let photo = includePhotos ? jpegData(for: journal) : nil
+                return JournalExportDTO(journal: journal, photoJPEG: photo)
+            }
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
-        return try encoder.encode(dtos)
+        return try encoder.encode(backup)
     }
 
     // MARK: - Import
 
-    /// Decodes rides from JSON Data, inserts those not already present (by UUID).
-    /// Returns the number of newly imported rides.
     @discardableResult
     func importRides(from data: Data) throws -> Int {
+        try importBackup(from: data).rides
+    }
+
+    @discardableResult
+    func importBackup(from data: Data) throws -> ImportSummary {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
+
+        if let backup = try? decoder.decode(AppBackupDTO.self, from: data) {
+            let bikesImported = importBikes(backup.bikes)
+            let ridesImported = importRideDTOs(backup.rides, shouldApplyOdometer: false)
+            let journalsImported = importJournals(backup.journals)
+            if bikesImported + ridesImported + journalsImported > 0 {
+                save()
+                loadAll()
+            }
+            let summary = ImportSummary(rides: ridesImported, bikes: bikesImported, journals: journalsImported)
+            ProductAnalytics.shared.track(.importCompleted, ["rides": "\(summary.rides)"])
+            return summary
+        }
+
         let dtos = try decoder.decode([RideExportDTO].self, from: data)
-
-        let existingIDs = Set(rides.map { $0.id })
-        var importedCount = 0
-
-        for dto in dtos {
-            guard !existingIDs.contains(dto.id) else { continue }
-
-            let routeCoords = dto.route.map {
-                CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
-            }
-            let matchedCoords = dto.matchedRoute?.map {
-                CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
-            }
-            let altitudes = dto.route.map(\.altitude)
-
-            let ride = Ride(
-                route: routeCoords,
-                startDate: dto.startDate,
-                endDate: dto.endDate,
-                distance: dto.distance,
-                averageSpeed: dto.averageSpeed,
-                maxSpeed: dto.maxSpeed,
-                duration: dto.duration,
-                matchedRoute: matchedCoords,
-                elevationGain: dto.elevationGain ?? 0,
-                bikeId: dto.bikeId,
-                altitudes: altitudes
-            )
-            ride.id = dto.id
-            ride.lineColorHex = dto.lineColorHex
-            ride.route = dto.route.map {
-                Ride.Coordinate(
-                    CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude),
-                    altitude: $0.altitude,
-                    timestamp: $0.timestamp,
-                    speed: $0.speed
-                )
-            }
-            modelContext.insert(ride)
-            importedCount += 1
-        }
-
-        if importedCount > 0 {
+        let ridesImported = importRideDTOs(dtos, shouldApplyOdometer: true)
+        if ridesImported > 0 {
             save()
-            loadRides()
+            loadAll()
         }
-        return importedCount
+        ProductAnalytics.shared.track(.importCompleted, ["rides": "\(ridesImported)"])
+        return ImportSummary(rides: ridesImported, bikes: 0, journals: 0)
     }
 
     // MARK: - Private
 
-    private func save() {
-        try? modelContext.save()
+    @discardableResult
+    private func save() -> Bool {
+        do {
+            try modelContext.save()
+            lastSaveError = nil
+            return true
+        } catch {
+            lastSaveError = error.localizedDescription
+            ProductAnalytics.shared.track(.storeSaveFailed, ["error": error.localizedDescription])
+            return false
+        }
+    }
+
+    private func importBikes(_ dtos: [BikeExportDTO]) -> Int {
+        let existing = Set(bikes.map(\.id))
+        var count = 0
+        for dto in dtos where !existing.contains(dto.id) {
+            let bike = Bike(
+                name: dto.name,
+                odometerMeters: dto.odometerMeters,
+                chainIntervalMeters: dto.chainIntervalMeters,
+                metersAtLastChainService: dto.metersAtLastChainService
+            )
+            bike.id = dto.id
+            bike.createdAt = dto.createdAt
+            modelContext.insert(bike)
+            bikes.append(bike)
+            count += 1
+        }
+        return count
+    }
+
+    private func importRideDTOs(_ dtos: [RideExportDTO], shouldApplyOdometer: Bool) -> Int {
+        let existingIDs = Set(rides.map(\.id))
+        var imported: [Ride] = []
+
+        for dto in dtos {
+            guard !existingIDs.contains(dto.id) else { continue }
+            let ride = makeRide(from: dto)
+            modelContext.insert(ride)
+            imported.append(ride)
+        }
+
+        if shouldApplyOdometer {
+            for ride in imported {
+                if let bikeId = ride.bikeId {
+                    applyOdometer(bikeId: bikeId, delta: ride.distance)
+                }
+            }
+        }
+        return imported.count
+    }
+
+    private func importJournals(_ dtos: [JournalExportDTO]) -> Int {
+        var count = 0
+        for dto in dtos {
+            let entry = journalOrCreate(for: dto.dayKey)
+            if !dto.note.isEmpty {
+                entry.note = dto.note
+            }
+            if let base64 = dto.photoJPEGBase64, let data = Data(base64Encoded: base64), let image = UIImage(data: data) {
+                setPhoto(image, for: dto.dayKey)
+            }
+            count += 1
+        }
+        return count
+    }
+
+    private func makeRide(from dto: RideExportDTO) -> Ride {
+        let routeCoords = dto.route.map {
+            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+        }
+        let matchedCoords = dto.matchedRoute?.map {
+            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+        }
+        let altitudes = dto.route.map(\.altitude)
+        let ride = Ride(
+            route: routeCoords,
+            startDate: dto.startDate,
+            endDate: dto.endDate,
+            distance: dto.distance,
+            averageSpeed: dto.averageSpeed,
+            maxSpeed: dto.maxSpeed,
+            duration: dto.duration,
+            matchedRoute: matchedCoords,
+            elevationGain: dto.elevationGain ?? 0,
+            bikeId: dto.bikeId,
+            altitudes: altitudes,
+            averageHeartRate: dto.averageHeartRate ?? 0,
+            maxHeartRate: dto.maxHeartRate ?? 0,
+            averageCadence: dto.averageCadence ?? 0
+        )
+        ride.id = dto.id
+        ride.lineColorHex = dto.lineColorHex
+        ride.route = dto.route.map {
+            Ride.Coordinate(
+                CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude),
+                altitude: $0.altitude,
+                timestamp: $0.timestamp,
+                speed: $0.speed
+            )
+        }
+        return ride
+    }
+
+    private func jpegData(for journal: DayJournal) -> Data? {
+        guard let fileName = journal.photoFileName else { return nil }
+        let url = photosDirectory.appendingPathComponent(fileName)
+        return try? Data(contentsOf: url)
     }
 }
